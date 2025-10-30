@@ -454,10 +454,13 @@
         // ID de tu Hoja de Historial de Cotizaciones
         const QUOTES_SHEET_ID = '153s8Lhum68zConWSbbFQtbR3dYzkafHy-4YQJ1HpvLk';
         // Asegúrate que esta hoja tenga una pestaña llamada 'Hoja 1' y las columnas correctas
-        const QUOTES_SHEET_RANGE = 'Hoja 1!A2:J'; // Asume A=ID, B=Numero, C=Fecha Emisión, D=Fecha Validez, E=Cliente JSON, F=Items JSON, G=Total, H=Estado, I=Notas, J=Google Doc ID
+        const QUOTES_SHEET_RANGE = 'Hoja 1!A2:K'; // Asume A=ID, B=Numero, C=Fecha Emisión, D=Fecha Validez, E=Cliente JSON, F=Items JSON, G=Total, H=Estado, I=Notas, J=Google Doc ID, K=Google PDF ID
 
         // ID de tu Plantilla de Contrato en Google Docs
         const CONTRACT_TEMPLATE_ID = '1MNE19Ymp40dTZ4Ulv31An3EWVRc8SW-ktD2H-dOFSa4';
+
+        // Carpeta donde se almacenarán los documentos y PDFs generados
+        const QUOTES_DRIVE_FOLDER_ID = '1mTsrPMrcLzSDapMs4m3fG_d5Q8EguEoX';
 
 
         let tokenClient;
@@ -540,7 +543,7 @@
                 console.error("Modal no inicializado, cancelando acción.");
                 // No podemos usar confirm() aquí porque esperamos un callback.
                 // Lo más seguro es no ejecutar la acción.
-                return; 
+                return;
             }
             modalTitle.innerText = title;
             modalBody.innerText = message;
@@ -550,6 +553,86 @@
             modalOverlay.classList.add('visible');
         }
         // --- FIN: LÓGICA DE MODAL PERSONALIZADO ---
+
+        function arrayBufferToBase64(buffer) {
+            if (!buffer) return '';
+            if (typeof buffer === 'string') {
+                return btoa(buffer);
+            }
+            let binary = '';
+            const bytes = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : new Uint8Array(buffer.buffer || buffer);
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                const chunk = bytes.subarray(i, i + chunkSize);
+                binary += String.fromCharCode.apply(null, chunk);
+            }
+            return btoa(binary);
+        }
+
+        async function savePdfToDriveFromDoc(docId, pdfName) {
+            if (!docId) return null;
+            if (!gapi?.client?.drive) {
+                throw new Error('API de Google Drive no está lista para exportar el PDF.');
+            }
+            if (!QUOTES_DRIVE_FOLDER_ID) {
+                console.warn('QUOTES_DRIVE_FOLDER_ID no está configurado. Se omitirá el guardado del PDF.');
+                return null;
+            }
+
+            const exportResponse = await gapi.client.request({
+                path: `/drive/v3/files/${docId}/export`,
+                method: 'GET',
+                params: { mimeType: 'application/pdf' },
+                responseType: 'arraybuffer'
+            });
+
+            const pdfData = exportResponse.body;
+            if (!pdfData) {
+                console.warn('No se recibió contenido al exportar el documento a PDF.');
+                return null;
+            }
+
+            const metadata = {
+                name: pdfName,
+                mimeType: 'application/pdf',
+                parents: [QUOTES_DRIVE_FOLDER_ID]
+            };
+
+            const boundary = '-------314159265358979323846';
+            const delimiter = `\r\n--${boundary}\r\n`;
+            const closeDelimiter = `\r\n--${boundary}--`;
+            const base64Data = arrayBufferToBase64(pdfData);
+
+            const multipartRequestBody =
+                delimiter + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+                JSON.stringify(metadata) +
+                delimiter + 'Content-Type: application/pdf\r\n' +
+                'Content-Transfer-Encoding: base64\r\n\r\n' +
+                base64Data +
+                closeDelimiter;
+
+            const uploadResponse = await gapi.client.request({
+                path: '/upload/drive/v3/files',
+                method: 'POST',
+                params: { uploadType: 'multipart' },
+                headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+                body: multipartRequestBody
+            });
+
+            return uploadResponse.result?.id || null;
+        }
+
+        async function trashDriveFile(fileId) {
+            if (!fileId || !gapi?.client?.drive) return;
+            try {
+                await gapi.client.drive.files.update({
+                    fileId,
+                    resource: { trashed: true }
+                });
+            } catch (error) {
+                console.error('Error enviando archivo a la papelera en Drive:', error);
+            }
+        }
 
 
         // --- FUNCIÓN PARA ASIGNAR ELEMENTOS DEL DOM ---
@@ -1333,7 +1416,8 @@
                             total: parseFloat(row[6]) || 0, // Col G
                             status: row[7] || 'Pendiente', // Col H
                             notes: row[8] || '', // Col I
-                            googleDocId: row[9] || null // Col J
+                            googleDocId: row[9] || null, // Col J
+                            googlePdfId: row[10] || null // Col K
                         }
                     } catch(e) {
                          // Capturar errores de JSON.parse u otros
@@ -1367,9 +1451,12 @@
                     const row = document.createElement('tr');
                     // Usar fallbacks si client o name no existen
                     const clientName = quote.client?.name || 'Cliente Desconocido'; 
-                    const docLinkHtml = quote.googleDocId 
-                        ? `<a href="https://docs.google.com/document/d/${quote.googleDocId}/edit" target="_blank" class="text-blue-600 hover:text-blue-900" title="Ver Documento en Google Drive"><i class="fas fa-link"></i></a>` 
-                        : ''; 
+                    const docLinkHtml = quote.googleDocId
+                        ? `<a href="https://docs.google.com/document/d/${quote.googleDocId}/edit" target="_blank" class="text-blue-600 hover:text-blue-900" title="Ver Documento en Google Drive"><i class="fas fa-link"></i></a>`
+                        : '';
+                    const pdfLinkHtml = quote.googlePdfId
+                        ? `<a href="https://drive.google.com/file/d/${quote.googlePdfId}/view" target="_blank" class="text-red-600 hover:text-red-800 ml-2" title="Abrir PDF en Google Drive"><i class="fas fa-file-pdf"></i></a>`
+                        : '';
 
                     row.innerHTML = `
                         <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">${quote.number || 'N/A'}</td>
@@ -1389,6 +1476,8 @@
                             <button onclick="loadQuoteForEdit('${quote.id}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Cargar cotización para editarla"><i class="fas fa-pencil-alt"></i></button>
                             <button onclick="reprintQuote('${quote.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2" title="Ver / Reimprimir cotización"><i class="fas fa-eye"></i></button>
                             ${docLinkHtml}
+                            ${pdfLinkHtml}
+                            <button onclick="deleteQuote('${quote.id}', ${quote.rowId}, '${quote.googleDocId || ''}', '${quote.googlePdfId || ''}')" class="text-red-500 hover:text-red-700 ml-2" title="Eliminar cotización"><i class="fas fa-trash"></i></button>
                         </td>`;
                     quotesHistoryList.appendChild(row);
                 });
@@ -1397,10 +1486,10 @@
 
         // Actualizar estado de cotización en Google Sheet
         async function updateQuoteStatus(quoteId, newStatus, rowId) {
-             // Revalidar ID y API
-             if (!QUOTES_SHEET_ID || QUOTES_SHEET_ID === 'ID_DE_TU_HOJA_DE_COTIZACIONES' || !rowId || !gapi?.client?.sheets) { 
-                 showAlert("Error: ID de Hoja de Cotizaciones no configurado, fila inválida o API no lista.", "Error de Configuración"); // REEMPLAZO
-                 // Revertir visualmente el select si es posible
+            // Revalidar ID y API
+            if (!QUOTES_SHEET_ID || QUOTES_SHEET_ID === 'ID_DE_TU_HOJA_DE_COTIZACIONES' || !rowId || !gapi?.client?.sheets) {
+                showAlert("Error: ID de Hoja de Cotizaciones no configurado, fila inválida o API no lista.", "Error de Configuración"); // REEMPLAZO
+                // Revertir visualmente el select si es posible
                  const selectElement = event?.target; // Intentar obtener el select que disparó el evento
                   if (selectElement) {
                        const originalQuote = quotesHistory.find(q => q.id === quoteId);
@@ -1642,24 +1731,29 @@
             const validityDate = quoteDateValue ? new Date(quoteDateValue + 'T00:00:00Z').toLocaleDateString('es-EC') : 'Indefinida'; // Usar T00:00:00Z para UTC
             const issueDate = now.toLocaleDateString('es-EC');
 
-            const subtotal = quoteItemsData.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            const subtotal = quoteItemsData.reduce((acc, item) => {
+                const itemPrice = parseFloat(item.price) || 0;
+                const itemQuantity = parseFloat(item.quantity) || 1;
+                return acc + (itemPrice * itemQuantity);
+            }, 0);
             const iva = parseFloat((subtotal * IVA_RATE).toFixed(2));
             const total = parseFloat((subtotal + iva).toFixed(2));
             
             // Crear el objeto de registro de cotización
             const quoteRecord = {
                 id: `quote_${now.getTime()}`, // ID único basado en timestamp
-                number: finalQuoteNumber, 
-                issueDate: issueDate, 
-                validityDate: validityDate, 
+                number: finalQuoteNumber,
+                issueDate: issueDate,
+                validityDate: validityDate,
                 client: JSON.parse(JSON.stringify(client)), // Clonar
                 items: JSON.parse(JSON.stringify(quoteItemsData)), // Clonar
-                subtotal: subtotal, 
-                iva: iva, 
-                total: total, 
-                notes: quoteNotesInput.value, 
-                status: 'Pendiente', 
-                googleDocId: null // Se llenará si se guarda en Drive
+                subtotal: subtotal,
+                iva: iva,
+                total: total,
+                notes: quoteNotesInput.value,
+                status: 'Pendiente',
+                googleDocId: null, // Se llenará si se guarda en Drive
+                googlePdfId: null
             };
             // Añadir compañía actual para la impresión offline
              quoteRecord.companySettingsForPrint = { ...companySettings };
@@ -1673,16 +1767,21 @@
 
 
             try {
-                 let docId = null;
                 if (saveToDrive) {
                     if (authStatus) authStatus.innerText = 'Creando documento en Google Drive...';
                      console.log("Intentando crear Doc para cotización:", quoteRecord);
-                    docId = await createQuoteAsGoogleDoc(quoteRecord);
-                    quoteRecord.googleDocId = docId; // Actualizar el registro con el ID del Doc
-                    showAlert(`Documento creado/actualizado exitosamente en Google Drive.\nID: ${docId}\nSe guardará el enlace en el historial.`, "Documento Creado"); // REEMPLAZO
+                    const driveAssets = await createQuoteAsGoogleDoc(quoteRecord);
+                    const docIdFromDrive = driveAssets?.docId || null;
+                    const pdfIdFromDrive = driveAssets?.pdfId || null;
+                    quoteRecord.googleDocId = docIdFromDrive;
+                    quoteRecord.googlePdfId = pdfIdFromDrive;
+                    let successMessage = 'Documento creado/actualizado exitosamente en Google Drive.';
+                    if (docIdFromDrive) successMessage += `\nID de documento: ${docIdFromDrive}`;
+                    if (pdfIdFromDrive) successMessage += `\nPDF almacenado con ID: ${pdfIdFromDrive}`;
+                    showAlert(`${successMessage}\nSe guardará el enlace en el historial.`, "Documento Creado"); // REEMPLAZO
                 }
 
-                // Preparar datos para Google Sheets (columnas A-J)
+                // Preparar datos para Google Sheets (columnas A-K)
                 const sheetRowData = [
                     quoteRecord.id,
                     quoteRecord.number,
@@ -1693,7 +1792,8 @@
                     quoteRecord.total,
                     quoteRecord.status,
                     quoteRecord.notes,
-                    quoteRecord.googleDocId // ID del Doc o null
+                    quoteRecord.googleDocId, // ID del Doc o null
+                    quoteRecord.googlePdfId // ID del PDF o null
                 ];
 
                  if (authStatus) authStatus.innerText = 'Guardando registro en Google Sheets...';
@@ -1701,7 +1801,7 @@
                 // Guardar en Google Sheets (Historial)
                 await gapi.client.sheets.spreadsheets.values.append({
                     spreadsheetId: QUOTES_SHEET_ID,
-                    range: 'Hoja 1!A:J', // Rango correcto A-J
+                    range: 'Hoja 1!A:K', // Rango correcto A-K
                     valueInputOption: 'USER_ENTERED',
                     insertDataOption: 'INSERT_ROWS',
                     resource: { values: [sheetRowData] }
@@ -1781,9 +1881,13 @@
             try {
                 // 1. Copiar la plantilla
                  console.log(`Copiando plantilla ${CONTRACT_TEMPLATE_ID} para crear ${docTitle}`);
+                const copyResource = { name: docTitle };
+                if (QUOTES_DRIVE_FOLDER_ID) {
+                    copyResource.parents = [QUOTES_DRIVE_FOLDER_ID];
+                }
                 const copyResponse = await gapi.client.drive.files.copy({
                     fileId: CONTRACT_TEMPLATE_ID,
-                    resource: { name: docTitle }
+                    resource: copyResource
                 });
                 const newDocId = copyResponse.result.id;
                  console.log("Documento copiado, nuevo ID:", newDocId);
@@ -1810,7 +1914,18 @@
                 });
                  console.log("batchUpdate completado.");
 
-                return newDocId; // Devolver el ID del nuevo documento
+                let newPdfId = null;
+                try {
+                    newPdfId = await savePdfToDriveFromDoc(newDocId, `${docTitle}.pdf`);
+                    if (newPdfId) {
+                        console.log('PDF generado y guardado en Drive con ID:', newPdfId);
+                    }
+                } catch (pdfError) {
+                    console.error('Error generando o guardando el PDF en Drive:', pdfError);
+                    showAlert('La cotización se guardó como documento en Drive, pero ocurrió un problema al generar el PDF. Puedes intentarlo nuevamente desde el historial.', 'Advertencia al generar PDF');
+                }
+
+                return { docId: newDocId, pdfId: newPdfId }; // Devolver ambos IDs
 
             } catch (err) {
                  console.error("Error creando Google Doc:", err);
@@ -1940,8 +2055,8 @@
             } else {
                 quoteItemsData.forEach((item, index) => {
                     const row = document.createElement('tr');
-                    const itemPrice = item.price || 0; // Fallback
-                    const itemQuantity = item.quantity || 1; // Fallback
+                    const itemPrice = parseFloat(item.price) || 0; // Fallback numérico
+                    const itemQuantity = parseFloat(item.quantity) || 1; // Fallback numérico
                     const totalPrice = (itemPrice * itemQuantity).toFixed(2);
                     // Input de cantidad ahora llama a updateQuantity con 'index' y 'this'
                     row.innerHTML = `
@@ -1951,7 +2066,9 @@
                         <td class="px-4 py-3 align-top">
                             <input type="number" min="1" value="${itemQuantity}" onchange="updateQuantity(${index}, this)" class="w-20 p-1 border border-gray-300 rounded-md text-center">
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap align-top text-right">$${itemPrice.toFixed(2)}</td>
+                        <td class="px-4 py-3 align-top text-right">
+                            <input type="number" min="0" step="0.01" value="${itemPrice.toFixed(2)}" onchange="updatePrice(${index}, this)" class="w-24 p-1 border border-gray-300 rounded-md text-right">
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap font-medium align-top text-right">$${totalPrice}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-right align-top">
                             <button onclick="removeQuoteItem(${index})" class="text-red-600 hover:text-red-900" title="Quitar Item"><i class="fas fa-trash"></i></button>
@@ -1982,6 +2099,24 @@
             renderQuoteItems(); // Redibujar para actualizar total del item y resumen
         }
 
+        function updatePrice(index, inputElement) {
+            if (!inputElement) return;
+            if (index < 0 || index >= quoteItemsData.length) {
+                console.error('Índice inválido para actualizar precio:', index);
+                inputElement.value = quoteItemsData[index]?.price?.toFixed?.(2) || '0.00';
+                return;
+            }
+            const newPrice = parseFloat(inputElement.value);
+            if (isNaN(newPrice) || newPrice < 0) {
+                showAlert('El precio debe ser un número mayor o igual a 0.');
+                inputElement.value = (quoteItemsData[index].price || 0).toFixed(2);
+                return;
+            }
+            quoteItemsData[index].price = parseFloat(newPrice.toFixed(2));
+            inputElement.value = quoteItemsData[index].price.toFixed(2);
+            renderQuoteItems();
+        }
+
         // Quitar un item de la cotización
         function removeQuoteItem(index) {
              if (index < 0 || index >= quoteItemsData.length) {
@@ -1997,7 +2132,11 @@
         // Calcular y mostrar Subtotal, IVA y Total
         function calculateTotals() {
             // Usar fallbacks en reduce
-            const subtotal = quoteItemsData.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0);
+            const subtotal = quoteItemsData.reduce((acc, item) => {
+                const itemPrice = parseFloat(item.price) || 0;
+                const itemQuantity = parseFloat(item.quantity) || 1;
+                return acc + (itemPrice * itemQuantity);
+            }, 0);
             const iva = parseFloat((subtotal * IVA_RATE).toFixed(2));
             const total = parseFloat((subtotal + iva).toFixed(2));
             
@@ -2289,6 +2428,54 @@
                  }
             }
         }
+
+        function deleteQuote(quoteId, rowId, googleDocId = '', googlePdfId = '') {
+            if (!quoteId || !rowId) {
+                showAlert('No se pudo determinar qué cotización eliminar.', 'Error al eliminar');
+                return;
+            }
+            if (!QUOTES_SHEET_ID || QUOTES_SHEET_ID === 'ID_DE_TU_HOJA_DE_COTIZACIONES') {
+                showAlert('Falta configurar el ID de la hoja de historial antes de eliminar.', 'Error de Configuración');
+                return;
+            }
+            if (!gapi?.client?.sheets) {
+                showAlert('La API de Google Sheets no está lista. Intenta nuevamente en unos segundos.', 'API no disponible');
+                return;
+            }
+
+            const sanitizedDocId = (googleDocId && googleDocId !== 'null' && googleDocId !== 'undefined') ? googleDocId : '';
+            const sanitizedPdfId = (googlePdfId && googlePdfId !== 'null' && googlePdfId !== 'undefined') ? googlePdfId : '';
+
+            showConfirm('¿Deseas eliminar esta cotización del historial?\nEsta acción limpiará la fila en Google Sheets y enviará a la papelera los archivos relacionados en Drive.', async () => {
+                try {
+                    if (authStatus) authStatus.innerText = `Eliminando cotización en la fila ${rowId}...`;
+                    const range = `Hoja 1!A${rowId}:K${rowId}`;
+                    await gapi.client.sheets.spreadsheets.values.clear({
+                        spreadsheetId: QUOTES_SHEET_ID,
+                        range
+                    });
+
+                    if (sanitizedDocId) {
+                        await trashDriveFile(sanitizedDocId);
+                    }
+                    if (sanitizedPdfId) {
+                        await trashDriveFile(sanitizedPdfId);
+                    }
+
+                    quotesHistory = quotesHistory.filter(q => q.id !== quoteId);
+                    quoteCounter = quotesHistory.length + 1;
+                    renderQuotesHistory();
+                    renderDashboard();
+                    showAlert('Cotización eliminada correctamente.', 'Cotización eliminada');
+                } catch (error) {
+                    console.error('Error al eliminar la cotización:', error);
+                    const errorMsg = error.result?.error?.message || error.message || 'Error desconocido.';
+                    showAlert(`No se pudo eliminar la cotización: ${errorMsg}`, 'Error al eliminar');
+                } finally {
+                    if (authStatus) authStatus.innerText = 'Listo.';
+                }
+            }, 'Eliminar cotización');
+        }
         
          // Manejador de cambio en select de cotización (pestaña Contratos)
          function handleContractQuoteChange() {
@@ -2343,9 +2530,12 @@
             // Construir HTML
             let contentHtml = '';
             [...clientQuotes].reverse().forEach(quote => {
-                const docLinkHtml = quote.googleDocId 
-                    ? `<a href="https://docs.google.com/document/d/${quote.googleDocId}/edit" target="_blank" class="text-sm text-blue-600 hover:underline ml-4"><i class="fas fa-link mr-1"></i>Ver Documento</a>` 
-                    : ''; 
+                const docLinkHtml = quote.googleDocId
+                    ? `<a href="https://docs.google.com/document/d/${quote.googleDocId}/edit" target="_blank" class="text-sm text-blue-600 hover:underline ml-4"><i class="fas fa-link mr-1"></i>Ver Documento</a>`
+                    : '';
+                const pdfLinkHtml = quote.googlePdfId
+                    ? `<a href="https://drive.google.com/file/d/${quote.googlePdfId}/view" target="_blank" class="text-sm text-red-600 hover:underline ml-2"><i class="fas fa-file-pdf mr-1"></i>Ver PDF</a>`
+                    : '';
                 contentHtml += `
                     <div class="mb-6 pb-4 border-b border-gray-200 last:border-b-0">
                         <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
@@ -2353,9 +2543,10 @@
                             <span class="status-badge status-${quote.status || 'Pendiente'}">${quote.status || 'Pendiente'}</span>
                         </div>
                         <p class="text-sm text-gray-600">
-                            <span class="mr-3">Emitida: ${quote.issueDate || 'N/A'}</span> | 
+                            <span class="mr-3">Emitida: ${quote.issueDate || 'N/A'}</span> |
                             <span class="mx-3">Total: <b class="text-gray-900">$${(quote.total || 0).toFixed(2)}</b></span>
                             ${docLinkHtml}
+                            ${pdfLinkHtml}
                         </p>
                     </div>
                 `;

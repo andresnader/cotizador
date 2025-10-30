@@ -45,7 +45,7 @@ let loginOverlay, appContainer, authStatus, loginButton, logoutButton, loadingSp
 let clientForm, clientList, clientRowIdInput, clientNameInput, clientRUCInput, clientContactInput;
 let serviceForm, serviceList, serviceRowIdInput, serviceNameInput, serviceDescriptionInput, servicePriceInput, serviceIdInput;
 let quotesHistoryList;
-let quoteClientSelect, quoteRUCInput, serviceSelect, quoteItemsBody, quoteNumberInput, quoteNotesInput, quoteDate;
+let quoteClientSelect, quoteRUCInput, serviceSelect, servicePriceOverrideInput, quoteItemsBody, quoteNumberInput, quoteNotesInput, quoteDate;
 let configForm, companyNameInput, companyAddressInput, companyContactInput, companyWebsiteInput, companyWhatsappInput, logoUploadInput, logoPreview, primaryColorInput, accentColorInput;
 let contractClientSelect, contractQuoteSelect, contractText, saveContractBtn;
 let portalClientSelect, clientPortalContent;
@@ -238,6 +238,7 @@ function assignDOMElements() {
     quoteClientSelect = document.getElementById('quoteClient');
     quoteRUCInput = document.getElementById('quoteRUC');
     serviceSelect = document.getElementById('serviceSelect');
+    servicePriceOverrideInput = document.getElementById('servicePriceOverride');
     quoteItemsBody = document.getElementById('quoteItems');
     quoteNumberInput = document.getElementById('quoteNumber');
     quoteNotesInput = document.getElementById('quoteNotes');
@@ -272,9 +273,12 @@ function assignDOMElements() {
     if (configForm) configForm.addEventListener('submit', handleConfigFormSubmit);
     if (logoUploadInput) logoUploadInput.addEventListener('change', handleLogoUploadChange);
     if (quoteClientSelect) quoteClientSelect.addEventListener('change', handleQuoteClientChange);
+    if (serviceSelect) serviceSelect.addEventListener('change', handleServiceSelectChange);
     if (contractClientSelect) contractClientSelect.addEventListener('change', handleContractClientChange);
     if (contractQuoteSelect) contractQuoteSelect.addEventListener('change', handleContractQuoteChange);
     if (portalClientSelect) portalClientSelect.addEventListener('change', handlePortalClientChange);
+
+    syncServicePriceOverrideField();
 }
 
 // --- 2. LÓGICA DE AUTENTICACIÓN (AUTH) - REESTRUCTURADA ---
@@ -1411,6 +1415,8 @@ async function generatePrintableQuote(saveToDrive = false) {
         updateQuoteNumberPreview(); // Actualizar número de previsualización
         quoteItemsData = []; // Vaciar items
         if (quoteNotesInput) quoteNotesInput.value = ''; // Limpiar notas
+        if (serviceSelect) serviceSelect.value = '';
+        syncServicePriceOverrideField();
         renderQuoteItems(); // Limpiar tabla de items en UI
 
     } catch (err) {
@@ -1590,6 +1596,40 @@ function updateServiceDropdown() {
      if (currentValue && serviceSelect.querySelector(`option[value="${currentValue}"]`)) {
          serviceSelect.value = currentValue;
      }
+    syncServicePriceOverrideField(true);
+}
+
+function handleServiceSelectChange() {
+    syncServicePriceOverrideField(true);
+}
+
+function syncServicePriceOverrideField(forceDefault = false) {
+    if (!servicePriceOverrideInput) return;
+    const hasSelection = !!serviceSelect && !!serviceSelect.value;
+
+    if (!hasSelection) {
+        servicePriceOverrideInput.value = '';
+        servicePriceOverrideInput.placeholder = '0.00';
+        servicePriceOverrideInput.disabled = true;
+        return;
+    }
+
+    const selectedService = services.find(s => s.id === serviceSelect.value);
+    const servicePrice = parseFloat(selectedService?.price);
+
+    servicePriceOverrideInput.disabled = false;
+
+    if (
+        forceDefault ||
+        servicePriceOverrideInput.value === '' ||
+        servicePriceOverrideInput.disabled
+    ) {
+        if (Number.isFinite(servicePrice)) {
+            servicePriceOverrideInput.value = servicePrice.toFixed(2);
+        } else {
+            servicePriceOverrideInput.value = '0.00';
+        }
+    }
 }
 
 // Añadir servicio a la tabla temporal de la cotización
@@ -1600,19 +1640,52 @@ function addServiceToQuote() {
     const service = services.find(s => s.id === serviceId);
     if (!service) { showAlert('Servicio seleccionado no encontrado en la lista cargada.'); return; } // REEMPLAZO
 
+    let overridePrice = null;
+    if (servicePriceOverrideInput && !servicePriceOverrideInput.disabled) {
+        const rawPrice = (servicePriceOverrideInput.value || '').trim();
+        if (rawPrice !== '') {
+            const parsedOverride = parseFloat(rawPrice);
+            if (!Number.isFinite(parsedOverride)) {
+                showAlert('Ingrese un precio válido para el servicio seleccionado.');
+                servicePriceOverrideInput.focus();
+                return;
+            }
+            if (parsedOverride < 0) {
+                showAlert('El precio debe ser un número mayor o igual a 0.');
+                servicePriceOverrideInput.focus();
+                return;
+            }
+            overridePrice = parseFloat(parsedOverride.toFixed(2));
+        }
+    }
+
+    const parsedServicePrice = parseFloat(service.price);
+    let defaultPrice = 0;
+    if (Number.isFinite(parsedServicePrice)) {
+        defaultPrice = parseFloat(parsedServicePrice.toFixed(2));
+    }
+    const finalPrice = overridePrice !== null ? overridePrice : defaultPrice;
+
+    if (servicePriceOverrideInput && !servicePriceOverrideInput.disabled) {
+        servicePriceOverrideInput.value = finalPrice.toFixed(2);
+    }
+
     // Buscar si ya existe en la cotización actual
     const existingItemIndex = quoteItemsData.findIndex(item => item.id === serviceId);
     if (existingItemIndex > -1) {
         // Si existe, incrementar cantidad
         quoteItemsData[existingItemIndex].quantity++;
+        if (overridePrice !== null) {
+            quoteItemsData[existingItemIndex].price = finalPrice;
+        }
     } else {
         // Si no existe, añadirlo con cantidad 1
-        quoteItemsData.push({ 
-            id: service.id, 
-            name: service.name, 
+        quoteItemsData.push({
+            id: service.id,
+            name: service.name,
             description: service.description, // Aunque no se muestra, guardarlo
-            price: service.price, 
-            quantity: 1 
+            price: finalPrice,
+            quantity: 1
         });
     }
     renderQuoteItems(); // Redibujar la tabla de items

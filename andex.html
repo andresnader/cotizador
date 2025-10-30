@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <!-- --- GOOGLE API --- -->
     <!-- Scripts movidos al final del body -->
@@ -53,7 +52,6 @@
         <div class="mb-6 border-b border-gray-200 no-print">
             <nav class="flex flex-wrap -mb-px space-x-2 md:space-x-4" aria-label="Tabs">
                 <button class="tab-button active text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'cotizador')"><i class="fas fa-file-invoice-dollar mr-2"></i>Cotizador</button>
-                <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'dashboard')"><i class="fas fa-chart-line mr-2"></i>Dashboard</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'historial')"><i class="fas fa-history mr-2"></i>Historial</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'contratos')"><i class="fas fa-file-signature mr-2"></i>Contratos</button>
                  <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'portal')"><i class="fas fa-user-check mr-2"></i>Portal Cliente</button>
@@ -103,23 +101,6 @@
                                 <i class="fab fa-google-drive mr-2"></i>Generar y Guardar en Drive
                             </button>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pestaña: Dashboard -->
-            <div id="dashboard" class="tab-content">
-                <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-2xl font-bold mb-6">Dashboard de Ventas</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                        <div class="bg-green-100 p-4 rounded-lg text-center"><p class="text-sm text-green-800 font-semibold">VENTAS (ACEPTADAS)</p><p id="total-sales" class="text-3xl font-bold text-green-600">$0.00</p></div>
-                        <div class="bg-blue-100 p-4 rounded-lg text-center"><p class="text-sm text-blue-800 font-semibold">TICKET PROMEDIO</p><p id="average-sale" class="text-3xl font-bold text-blue-600">$0.00</p></div>
-                        <div class="bg-yellow-100 p-4 rounded-lg text-center"><p class="text-sm text-yellow-800 font-semibold">PRODUCTO MÁS VENDIDO</p><p id="best-seller" class="text-xl md:text-2xl font-bold text-yellow-600">-</p></div>
-                        <div class="bg-indigo-100 p-4 rounded-lg text-center"><p class="text-sm text-indigo-800 font-semibold">COTIZACIONES TOTALES</p><p id="total-quotes" class="text-3xl font-bold text-indigo-600">0</p></div>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold mb-4">Ventas por Mes</h3>
-                        <div id="sales-chart-container" class="w-full h-80 bg-gray-50 p-4 rounded-lg"></div>
                     </div>
                 </div>
             </div>

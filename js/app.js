@@ -144,25 +144,35 @@ function arrayBufferToBase64(buffer) {
 
 async function savePdfToDriveFromDoc(docId, pdfName) {
     if (!docId) return null;
-    if (!gapi?.client?.drive) {
-        throw new Error('API de Google Drive no está lista para exportar el PDF.');
-    }
     if (!QUOTES_DRIVE_FOLDER_ID) {
         console.warn('QUOTES_DRIVE_FOLDER_ID no está configurado. Se omitirá el guardado del PDF.');
         return null;
     }
 
-    const exportResponse = await gapi.client.request({
-        path: `/drive/v3/files/${docId}/export`,
-        method: 'GET',
-        params: { mimeType: 'application/pdf' },
-        responseType: 'arraybuffer'
+    const token = (typeof gapi?.client?.getToken === 'function') ? gapi.client.getToken() : gapi?.auth?.getToken?.();
+    const accessToken = token?.access_token;
+    if (!accessToken) {
+        throw new Error('No se encontró un token de acceso válido para exportar el PDF.');
+    }
+
+    // Dar un pequeño margen para que Google Docs termine de aplicar los reemplazos
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const exportUrl = `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`;
+    const exportResponse = await fetch(exportUrl, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`
+        }
     });
 
-    const pdfData = exportResponse.body;
-    if (!pdfData) {
-        console.warn('No se recibió contenido al exportar el documento a PDF.');
-        return null;
+    if (!exportResponse.ok) {
+        const errorText = await exportResponse.text();
+        throw new Error(`No se pudo exportar el documento a PDF: ${exportResponse.status} ${errorText}`);
+    }
+
+    const pdfBuffer = await exportResponse.arrayBuffer();
+    if (!pdfBuffer || pdfBuffer.byteLength === 0) {
+        throw new Error('La exportación a PDF devolvió un archivo vacío.');
     }
 
     const metadata = {
@@ -174,7 +184,7 @@ async function savePdfToDriveFromDoc(docId, pdfName) {
     const boundary = '-------314159265358979323846';
     const delimiter = `\r\n--${boundary}\r\n`;
     const closeDelimiter = `\r\n--${boundary}--`;
-    const base64Data = arrayBufferToBase64(pdfData);
+    const base64Data = arrayBufferToBase64(pdfBuffer);
 
     const multipartRequestBody =
         delimiter + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
@@ -184,15 +194,22 @@ async function savePdfToDriveFromDoc(docId, pdfName) {
         base64Data +
         closeDelimiter;
 
-    const uploadResponse = await gapi.client.request({
-        path: '/upload/drive/v3/files',
+    const uploadResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
         method: 'POST',
-        params: { uploadType: 'multipart' },
-        headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+        },
         body: multipartRequestBody
     });
 
-    return uploadResponse.result?.id || null;
+    if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`No se pudo guardar el PDF en Drive: ${uploadResponse.status} ${errorText}`);
+    }
+
+    const uploadResult = await uploadResponse.json();
+    return uploadResult?.id || null;
 }
 
 async function trashDriveFile(fileId) {
@@ -539,7 +556,6 @@ async function initializeDataFromGoogle() {
     updateQuoteNumberPreview(); // Calcula el número de cotización
     loadSettings(); // Carga config. local (nombre empresa, logo, etc.)
     renderQuotesHistory(); // Renderiza la tabla de historial
-    renderDashboard(); // Calcula estadísticas
 
     // Asegurar que la primera pestaña esté activa visualmente
     const firstTabButton = document.querySelector('.tab-button');
@@ -1092,8 +1108,7 @@ async function updateQuoteStatus(quoteId, newStatus, rowId) {
         if (quoteIndex > -1) {
             quotesHistory[quoteIndex].status = newStatus;
             renderQuotesHistory(); // Redibujar tabla historial
-            renderDashboard(); // Actualizar dashboard
-             if (authStatus) authStatus.innerText = 'Estado actualizado.';
+            if (authStatus) authStatus.innerText = 'Estado actualizado.';
         } else {
              console.warn("Cotización no encontrada localmente tras actualizar estado:", quoteId);
              // Si no se encontró localmente (raro), forzar recarga completa
@@ -1201,10 +1216,14 @@ async function handleSaveContractClick() {
 
         // 2. Copiar la plantilla
         console.log(`Copiando plantilla ${CONTRACT_TEMPLATE_ID} para crear contrato: ${docTitle}`);
-        const copyResponse = await gapi.client.drive.files.copy({
+        const copyPayload = {
             fileId: CONTRACT_TEMPLATE_ID,
             resource: { name: docTitle }
-        });
+        };
+        if (QUOTES_DRIVE_FOLDER_ID) {
+            copyPayload.resource.parents = [QUOTES_DRIVE_FOLDER_ID];
+        }
+        const copyResponse = await gapi.client.drive.files.copy(copyPayload);
         const newDocId = copyResponse.result.id;
         console.log("Plantilla copiada, nuevo ID de contrato:", newDocId);
 
@@ -1531,7 +1550,6 @@ function changeTab(event, tabName) {
        }
 
     // Llamar a funciones de renderizado específicas de la pestaña
-    if (tabName === 'dashboard') renderDashboard();
     if (tabName === 'contratos') renderContractsPage();
     if (tabName === 'portal') renderClientPortalPage();
 }
@@ -1891,153 +1909,6 @@ function handleConfigFormSubmit(e) {
      }
 }
 
-// --- LÓGICA DEL DASHBOARD ---
- function renderDashboard() {
-    // Filtrar cotizaciones aceptadas válidas
-    const acceptedQuotes = quotesHistory.filter(q => q && q.status === 'Aceptada'); 
-    const totalSales = acceptedQuotes.reduce((sum, q) => sum + (q.total || 0), 0); // Usar 0 si total falta
-    const averageSale = acceptedQuotes.length > 0 ? totalSales / acceptedQuotes.length : 0;
-
-    // Actualizar elementos del DOM (con chequeos)
-    const totalSalesEl = document.getElementById('total-sales');
-    const averageSaleEl = document.getElementById('average-sale');
-    const totalQuotesEl = document.getElementById('total-quotes');
-    const bestSellerEl = document.getElementById('best-seller');
-
-     if (totalSalesEl) totalSalesEl.textContent = `$${totalSales.toFixed(2)}`;
-     if (averageSaleEl) averageSaleEl.textContent = `$${averageSale.toFixed(2)}`;
-     // Contar todas las cotizaciones válidas
-     if (totalQuotesEl) totalQuotesEl.textContent = quotesHistory.filter(q => q).length; 
-
-    // Calcular producto más vendido
-    const salesByProduct = {};
-    acceptedQuotes.forEach(q => {
-        (q.items || []).forEach(item => { 
-            if (item && item.name) { // Asegurarse que item y name existan
-                if (!salesByProduct[item.name]) {
-                    salesByProduct[item.name] = 0;
-                }
-                salesByProduct[item.name] += (item.quantity || 1); // Usar 1 si quantity falta
-            }
-        });
-    });
-
-    let bestSeller = '-';
-    let maxQuantity = 0;
-    for (const productName in salesByProduct) {
-        if (salesByProduct[productName] > maxQuantity) {
-            maxQuantity = salesByProduct[productName];
-            bestSeller = productName;
-        }
-    }
-     if (bestSellerEl) bestSellerEl.textContent = bestSeller;
-
-    // Calcular ventas por mes
-    const salesByMonth = {};
-    acceptedQuotes.forEach(q => {
-         // Validar fecha antes de procesar
-         if (q.issueDate && typeof q.issueDate === 'string') {
-             const parts = q.issueDate.split('/');
-             if (parts.length === 3) {
-                 const [day, month, year] = parts;
-                  // Validar que sean números
-                  if (!isNaN(parseInt(day)) && !isNaN(parseInt(month)) && !isNaN(parseInt(year))) {
-                     const monthYear = `${year}-${month.padStart(2, '0')}`; // Asegurar formato YYYY-MM
-                     if (!salesByMonth[monthYear]) salesByMonth[monthYear] = 0;
-                     salesByMonth[monthYear] += (q.total || 0); // Usar 0 si total falta
-                   } else {
-                       console.warn("Fecha inválida en historial:", q.issueDate);
-                   }
-             } else {
-                  console.warn("Formato de fecha inesperado:", q.issueDate);
-              }
-         }
-    });
-
-    // Preparar datos para el gráfico y ordenarlos
-    const chartData = Object.keys(salesByMonth).map(key => ({
-        month: key, // Formato YYYY-MM
-        sales: salesByMonth[key]
-    })).sort((a, b) => {
-         // Ordenar por fecha YYYY-MM
-         const [yearA, monthA] = a.month.split('-');
-         const [yearB, monthB] = b.month.split('-');
-         return new Date(yearA, monthA - 1) - new Date(yearB, monthB - 1);
-     });
-
-    drawSalesChart(chartData); // Dibujar el gráfico
-}
-
-// Dibujar gráfico de barras con D3
-function drawSalesChart(data) {
-    const container = d3.select("#sales-chart-container");
-     if (container.empty()) { console.error("Contenedor del gráfico no encontrado."); return; } // Chequeo
-    container.selectAll("*").remove(); // Limpiar contenido anterior
-
-    if (!data || data.length === 0) {
-        container.append("div").attr("class", "flex items-center justify-center h-full text-gray-500").text("No hay datos de ventas aceptadas para mostrar.");
-        return;
-    }
-
-    const margin = {top: 20, right: 30, bottom: 70, left: 80}; // Ajustar márgenes
-    try {
-        const containerNode = container.node();
-        if (!containerNode) return; 
-        // Asegurar dimensiones mínimas
-        const width = Math.max(containerNode.getBoundingClientRect().width - margin.left - margin.right, 200);
-        const height = Math.max(containerNode.getBoundingClientRect().height - margin.top - margin.bottom, 150);
-
-        const svg = container.append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g")
-            .attr("transform", `translate(${margin.left},${margin.top})`);
-
-        // Eje X (Meses)
-        const x = d3.scaleBand()
-            .range([0, width])
-            .domain(data.map(d => d.month)) // Usa YYYY-MM como dominio
-            .padding(0.3); // Aumentar padding
-
-        svg.append("g")
-            .attr("transform", `translate(0,${height})`)
-            .call(d3.axisBottom(x))
-            .selectAll("text")
-            .attr("transform", "translate(-10,5)rotate(-45)") // Ajustar rotación y posición
-            .style("text-anchor", "end")
-            .style("font-size", "10px"); // Tamaño de fuente más pequeño
-
-        // Eje Y (Ventas en $)
-        const yMax = d3.max(data, d => d.sales);
-        const y = d3.scaleLinear()
-            .domain([0, yMax > 0 ? yMax * 1.1 : 1]) // Dar un poco de espacio arriba, evitar dominio 0
-            .range([height, 0]);
-
-        svg.append("g")
-            .call(d3.axisLeft(y).ticks(5).tickFormat(d => `$${d.toLocaleString('es-EC', { maximumFractionDigits: 0 })}`)) // Formato de moneda local sin decimales
-            .style("font-size", "10px");
-
-        // Barras
-        svg.selectAll(".bar")
-            .data(data)
-            .enter()
-            .append("rect")
-            .attr("class", "bar")
-            .attr("x", d => x(d.month))
-            .attr("y", d => y(d.sales))
-            .attr("width", x.bandwidth())
-            .attr("height", d => Math.max(0, height - y(d.sales))) // Asegurar altura >= 0
-            .attr("fill", companySettings.accentColor || '#4f46e5') // Usar color de acento
-             // Tooltip básico (opcional)
-            .append("title") 
-            .text(d => `${d.month}: $${d.sales.toFixed(2)}`);
-
-    } catch(e) {
-         console.error("Error dibujando gráfico D3:", e);
-         container.html('<p class="text-red-500 text-center p-4">Error al renderizar el gráfico.</p>'); // Mostrar error en UI
-     }
-}
-
 // --- LÓGICA DE CONTRATOS Y PORTAL ---
  function renderContractsPage() {
      // Disparar evento change en el select de cliente para actualizar las cotizaciones
@@ -2110,7 +1981,6 @@ function deleteQuote(quoteId, rowId, googleDocId = '', googlePdfId = '') {
             quotesHistory = quotesHistory.filter(q => q.id !== quoteId);
             quoteCounter = quotesHistory.length + 1;
             renderQuotesHistory();
-            renderDashboard();
             showAlert('Cotización eliminada correctamente.', 'Cotización eliminada');
         } catch (error) {
             console.error('Error al eliminar la cotización:', error);

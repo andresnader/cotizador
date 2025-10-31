@@ -144,6 +144,21 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatMultilineText(value) {
+    if (!value) return '';
+    return escapeHtml(value).replace(/\r?\n/g, '<br>');
+}
+
 function ensurePdfLibrariesAvailable() {
     if (typeof html2canvas !== 'function') {
         throw new Error('La librería html2canvas no está disponible.');
@@ -1993,125 +2008,152 @@ function handlePortalClientChange() {
 
 // --- LÓGICA DE IMPRESIÓN ---
 function buildPrintableHtml(quoteData) {
-    // Validación robusta de datos de entrada
     if (!quoteData || !quoteData.companySettings || !quoteData.client || !Array.isArray(quoteData.items)) {
-         console.error("buildPrintableHtml: Datos incompletos o inválidos:", quoteData);
-         return '<p style="color: red; font-weight: bold; text-align: center; padding: 20px;">Error: No se pueden generar los datos de la cotización para imprimir.</p>';
-     }
+        console.error("buildPrintableHtml: Datos incompletos o inválidos:", quoteData);
+        return '<p style="color: red; font-weight: bold; text-align: center; padding: 20px;">Error: No se pueden generar los datos de la cotización para imprimir.</p>';
+    }
 
-    const { companySettings: cs, client, items, number, issueDate, validityDate, subtotal, iva, total, notes } = quoteData;
+    const {
+        companySettings: cs,
+        client,
+        items,
+        number,
+        issueDate,
+        validityDate,
+        subtotal,
+        iva,
+        total,
+        notes
+    } = quoteData;
 
-    // Usar valores por defecto o 'N/A' si faltan datos
-    const logoHtml = cs.logo ? `<img src="${cs.logo}" alt="Logo ${cs.name || ''}" style="max-height: 80px; width: auto; object-fit: contain;">` : '';
+    const primaryColor = cs.primaryColor || '#0ea5e9';
+    const accentColor = cs.accentColor || '#22c55e';
+
     const companyName = cs.name || 'Nombre Empresa N/A';
     const companyAddress = cs.address || '';
     const companyContact = cs.contact || '';
+    const companyWebsite = typeof cs.website === 'string' ? cs.website.trim() : '';
+    const companyWhatsapp = typeof cs.whatsapp === 'string' ? cs.whatsapp.trim() : '';
+
     const clientName = client.name || 'Cliente N/A';
     const clientRuc = client.ruc || 'RUC/CI N/A';
     const clientContact = client.contact || '';
+
     const quoteNumber = number || 'N/A';
     const quoteIssueDate = issueDate || 'N/A';
     const quoteValidityDate = validityDate || 'N/A';
-    const quoteSubtotal = subtotal || 0;
-    const quoteIva = iva || 0;
-    const quoteTotal = total || 0;
+    const quoteSubtotal = typeof subtotal === 'number' ? subtotal : parseFloat(subtotal) || 0;
+    const quoteIva = typeof iva === 'number' ? iva : parseFloat(iva) || 0;
+    const quoteTotal = typeof total === 'number' ? total : parseFloat(total) || 0;
     const quoteNotes = notes || '';
-    const primaryColor = cs.primaryColor || '#1a202c'; // Negro como fallback
-    const accentColor = cs.accentColor || '#4f46e5'; // Indigo como fallback
 
-    // Generar filas de la tabla de items
+    const logoUrl = typeof cs.logo === 'string' ? cs.logo.trim() : '';
+    const companyInitials = companyName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(word => word.charAt(0).toUpperCase())
+        .join('') || 'LOGO';
+
+    const logoHtml = logoUrl
+        ? `<img src="${escapeHtml(logoUrl)}" alt="Logo ${escapeHtml(companyName)}" class="quote-logo">`
+        : `<div class="quote-logo-placeholder">${escapeHtml(companyInitials)}</div>`;
+
     const itemsHtml = items.map(item => {
-         // Validar cada item
-         const itemName = item.name || 'Servicio/Producto N/A';
-         const itemQty = item.quantity || 1;
-         const itemPrice = item.price || 0;
-         const itemTotalPrice = itemPrice * itemQty;
-         return `<tr>
-                     <td class="py-3 px-4 align-top"><p class="fw-semibold mb-1">${itemName}</p></td>
-                     <td class="py-3 px-4 text-center align-top">${itemQty}</td>
-                     <td class="py-3 px-4 text-end align-top">$${itemPrice.toFixed(2)}</td>
-                     <td class="py-3 px-4 text-end align-top">$${itemTotalPrice.toFixed(2)}</td>
-                 </tr>`;
-     }).join('');
+        const itemName = item?.name ? escapeHtml(item.name) : 'Servicio/Producto N/A';
+        const itemDescription = item?.description ? `<p class="quote-item-desc">${formatMultilineText(item.description)}</p>` : '';
+        const parsedQty = Number(item?.quantity);
+        const itemQty = Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : 1;
+        const parsedPrice = Number(item?.price);
+        const itemPriceValue = Number.isFinite(parsedPrice) && parsedPrice >= 0 ? parsedPrice : 0;
+        const itemTotalPrice = itemPriceValue * itemQty;
+        return `
+            <tr>
+                <td>
+                    <p class="quote-item-name">${itemName}</p>
+                    ${itemDescription}
+                </td>
+                <td class="text-center">${itemQty}</td>
+                <td class="text-end">$${itemPriceValue.toFixed(2)}</td>
+                <td class="text-end">$${itemTotalPrice.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join('');
 
-    // Generar sección de notas solo si hay notas
-    const notesHtml = quoteNotes ? `<div class="border-top pt-3 mt-4"><h4 class="h6 text-uppercase text-secondary fw-bold mb-2">Notas adicionales</h4><p class="small text-secondary" style="white-space: pre-wrap;">${quoteNotes}</p></div>` : '';
+    const websiteDisplay = companyWebsite ? companyWebsite.replace(/^(https?:\/\/)?(www\.)?/, '') : '';
+    const websiteHref = companyWebsite ? (companyWebsite.startsWith('http') ? companyWebsite : `https://${companyWebsite}`) : '';
+    const whatsappHref = companyWhatsapp ? `https://wa.me/${companyWhatsapp.replace(/\D/g, '')}` : '';
 
-    // Generar enlaces del footer solo si existen
-    let footerLinksHtml = '';
-    const websiteLink = cs.website ? `<a href="${cs.website.startsWith('http') ? cs.website : 'https://' + cs.website}" target="_blank" class="me-2" style="color: ${primaryColor}; text-decoration: none;">${cs.website.replace(/^(https?:\/\/)?(www\.)?/, '')}</a>` : '';
-    const whatsappLink = cs.whatsapp ? `<a href="https://wa.me/${cs.whatsapp.replace(/\D/g,'')}" target="_blank" class="ms-2" style="color: ${primaryColor}; text-decoration: none;"><i class="fab fa-whatsapp"></i> ${cs.whatsapp}</a>` : '';
-    if (websiteLink || whatsappLink) {
-        footerLinksHtml = `<div class="mb-3">${websiteLink}${websiteLink && whatsappLink ? '<span class="mx-2 text-muted">|</span>' : ''}${whatsappLink}</div>`;
+    const footerLinks = [];
+    if (websiteHref) {
+        footerLinks.push(`<a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener">${escapeHtml(websiteDisplay)}</a>`);
+    }
+    if (companyWhatsapp) {
+        footerLinks.push(`<a href="${escapeHtml(whatsappHref)}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> ${escapeHtml(companyWhatsapp)}</a>`);
     }
 
-    // Construir el HTML final
+    const notesHtml = quoteNotes
+        ? `<div class="quote-notes"><h4>Notas adicionales</h4><p>${formatMultilineText(quoteNotes)}</p></div>`
+        : '';
+
     return `
-        <div class="quote-print bg-white" style="font-family: 'Inter', Arial, sans-serif; max-width: 960px; margin: 0 auto; padding: 3rem;">
-            <header class="d-flex flex-wrap justify-content-between align-items-start pb-4 mb-4 border-bottom">
-                <div class="flex-grow-1 pe-md-4 mb-3 mb-md-0">${logoHtml}</div>
-                <div class="text-end">
-                    <h1 class="display-6 fw-bold mb-1" style="color: ${primaryColor};">COTIZACIÓN</h1>
-                    <p class="mb-0 text-secondary">Nº: <span class="font-monospace">${quoteNumber}</span></p>
+        <div class="quote-print" style="--quote-primary: ${primaryColor}; --quote-accent: ${accentColor};">
+            <header class="quote-print__header">
+                <div class="quote-print__brand">
+                    ${logoHtml}
+                    <div>
+                        <p class="quote-info-strong">${escapeHtml(companyName)}</p>
+                        ${companyAddress ? `<p class="quote-info-text">${formatMultilineText(companyAddress)}</p>` : ''}
+                        ${companyContact ? `<p class="quote-info-text">${formatMultilineText(companyContact)}</p>` : ''}
+                    </div>
+                </div>
+                <div class="quote-print__heading">
+                    <div class="quote-print__badge">Cotización</div>
+                    <p class="quote-print__number">Nº:<strong>${escapeHtml(quoteNumber)}</strong></p>
                 </div>
             </header>
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="p-4 bg-light border rounded">
-                        <h3 class="h6 text-uppercase text-secondary fw-bold mb-2">Cliente</h3>
-                        <p class="fw-semibold mb-1">${clientName}</p>
-                        <p class="mb-1 text-secondary">RUC/C.I.: ${clientRuc}</p>
-                        <p class="mb-0 text-secondary">${clientContact}</p>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="p-4 bg-light border rounded">
-                        <h3 class="h6 text-uppercase text-secondary fw-bold mb-2">De</h3>
-                        <p class="fw-semibold mb-1">${companyName}</p>
-                        <p class="mb-1 text-secondary">${companyAddress}</p>
-                        <p class="mb-0 text-secondary">${companyContact}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <h3 class="h6 text-uppercase text-secondary fw-bold mb-2">Fechas</h3>
-                    <p class="mb-1"><span class="fw-semibold">Emitida:</span> ${quoteIssueDate}</p>
-                    <p class="mb-0"><span class="fw-semibold">Válida hasta:</span> ${quoteValidityDate}</p>
-                </div>
-            </div>
-            <div class="table-responsive mb-4">
-                <table class="table table-bordered align-middle mb-0">
-                    <thead style="background-color: ${primaryColor}; color: #fff;">
+            <section class="quote-info-grid">
+                <article class="quote-info-card">
+                    <h3>Cliente</h3>
+                    <p class="quote-info-strong">${escapeHtml(clientName)}</p>
+                    <p class="quote-info-meta">RUC/C.I.: ${escapeHtml(clientRuc)}</p>
+                    ${clientContact ? `<p class="quote-info-text">${formatMultilineText(clientContact)}</p>` : ''}
+                </article>
+                <article class="quote-info-card">
+                    <h3>De</h3>
+                    <p class="quote-info-strong">${escapeHtml(companyName)}</p>
+                    ${companyAddress ? `<p class="quote-info-text">${formatMultilineText(companyAddress)}</p>` : ''}
+                    ${companyContact ? `<p class="quote-info-text">${formatMultilineText(companyContact)}</p>` : ''}
+                </article>
+                <article class="quote-info-card">
+                    <h3>Fechas</h3>
+                    <p class="quote-info-meta">Emisión</p>
+                    <p class="quote-info-text">${escapeHtml(quoteIssueDate)}</p>
+                    <p class="quote-info-meta">Válida hasta</p>
+                    <p class="quote-info-text">${escapeHtml(quoteValidityDate)}</p>
+                </article>
+            </section>
+            <section>
+                <table class="quote-table">
+                    <thead>
                         <tr>
-                            <th scope="col" class="text-uppercase small">Descripción</th>
-                            <th scope="col" class="text-uppercase small text-center" style="width: 100px;">Cant.</th>
-                            <th scope="col" class="text-uppercase small text-end" style="width: 140px;">P. Unit.</th>
-                            <th scope="col" class="text-uppercase small text-end" style="width: 140px;">Total</th>
+                            <th scope="col">Descripción</th>
+                            <th scope="col" style="width: 100px;" class="text-center">Cant.</th>
+                            <th scope="col" style="width: 130px;" class="text-end">P. Unit.</th>
+                            <th scope="col" style="width: 140px;" class="text-end">Total</th>
                         </tr>
                     </thead>
                     <tbody>${itemsHtml}</tbody>
                 </table>
-            </div>
-            <div class="row justify-content-end mb-4">
-                <div class="col-md-6 col-lg-4">
-                    <div class="d-flex justify-content-between border-top pt-2">
-                        <span class="fw-semibold text-secondary">Subtotal:</span>
-                        <span class="fw-semibold">$${quoteSubtotal.toFixed(2)}</span>
-                    </div>
-                    <div class="d-flex justify-content-between pt-2">
-                        <span class="fw-semibold text-secondary">IVA (${(IVA_RATE * 100).toFixed(0)}%):</span>
-                        <span class="fw-semibold">$${quoteIva.toFixed(2)}</span>
-                    </div>
-                    <div class="d-flex justify-content-between border-top mt-3 pt-3" style="border-color: ${primaryColor};">
-                        <span class="fw-bold fs-5" style="color: ${accentColor};">TOTAL:</span>
-                        <span class="fw-bold fs-5" style="color: ${accentColor};">$${quoteTotal.toFixed(2)}</span>
-                    </div>
-                </div>
-            </div>
+            </section>
+            <section class="quote-totals">
+                <div class="quote-totals-row"><span>Subtotal</span><span>$${quoteSubtotal.toFixed(2)}</span></div>
+                <div class="quote-totals-row"><span>IVA ${(IVA_RATE * 100).toFixed(0)}%</span><span>$${quoteIva.toFixed(2)}</span></div>
+                <div class="quote-total-final"><span>Total</span><span>$${quoteTotal.toFixed(2)}</span></div>
+            </section>
             ${notesHtml}
-            <footer class="border-top pt-4 text-center text-muted small">
-                ${footerLinksHtml}
+            <footer class="quote-footer">
+                ${footerLinks.length ? `<div class="quote-footer-links">${footerLinks.join('<span class="mx-1 text-muted">|</span>')}</div>` : ''}
                 <p class="mb-1">Gracias por su preferencia.</p>
                 <p class="mb-0">Esta cotización es un documento informativo generado por sistema.</p>
             </footer>

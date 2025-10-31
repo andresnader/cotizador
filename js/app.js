@@ -663,19 +663,19 @@ function renderClients() {
      if (!clientList) {console.warn("Elemento clientList no encontrado para renderizar."); return;} 
     clientList.innerHTML = ''; // Limpiar tabla
     if (clients.length === 0) {
-        clientList.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">No hay clientes para mostrar. Añade uno o revisa la conexión con Google Sheets.</td></tr>`;
+        clientList.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">No hay clientes para mostrar. Añade uno o revisa la conexión con Google Sheets.</td></tr>`;
     } else {
         // Ordenar por nombre antes de renderizar
         [...clients].sort((a,b) => (a.name || '').localeCompare(b.name || '')).forEach(client => {
             const row = document.createElement('tr');
             // Usamos client.id (RUC) para editar y client.rowId para borrar
             row.innerHTML = `
-                <td class="px-4 py-3 whitespace-nowrap font-mono text-sm">${client.ruc || 'N/A'}</td>
-                <td class="px-4 py-3 whitespace-nowrap">${client.name || 'N/A'}</td>
-                <td class="px-4 py-3 whitespace-nowrap">${client.contact || ''}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                    <button onclick="editClient('${client.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Editar Cliente"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteClient('${client.rowId}')" class="text-red-600 hover:text-red-900" title="Eliminar Cliente (limpia la fila)"><i class="fas fa-trash"></i></button>
+                <td class="px-3 py-2 text-nowrap font-monospace">${client.ruc || 'N/A'}</td>
+                <td class="px-3 py-2 text-nowrap">${client.name || 'N/A'}</td>
+                <td class="px-3 py-2 text-nowrap">${client.contact || ''}</td>
+                <td class="px-3 py-2 text-end">
+                    <button onclick="editClient('${client.id}')" class="btn btn-sm btn-outline-primary me-2" title="Editar Cliente"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteClient('${client.rowId}')" class="btn btn-sm btn-outline-danger" title="Eliminar Cliente (limpia la fila)"><i class="fas fa-trash"></i></button>
                 </td>`;
             clientList.appendChild(row);
         });
@@ -857,18 +857,18 @@ function renderServices() {
      if (!serviceList) {console.warn("Elemento serviceList no encontrado."); return;}
     serviceList.innerHTML = ''; // Limpiar
      if (services.length === 0) {
-         serviceList.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-gray-500">No hay servicios para mostrar. Añade uno o revisa la conexión con Google Sheets.</td></tr>`;
+         serviceList.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted">No hay servicios para mostrar. Añade uno o revisa la conexión con Google Sheets.</td></tr>`;
      } else {
          // Ordenar por nombre
          [...services].sort((a,b) => (a.name || '').localeCompare(b.name || '')).forEach(service => {
             const row = document.createElement('tr');
             // Usar service.id para editar, service.rowId para borrar
             row.innerHTML = `
-                <td class="px-4 py-3 whitespace-nowrap">${service.name || 'N/A'}</td>
-                <td class="px-4 py-3 whitespace-nowrap">$${(service.price || 0).toFixed(2)}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                    <button onclick="editService('${service.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Editar Servicio"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteService('${service.rowId}')" class="text-red-600 hover:text-red-900" title="Eliminar Servicio (limpia la fila)"><i class="fas fa-trash"></i></button>
+                <td class="px-3 py-2 text-nowrap">${service.name || 'N/A'}</td>
+                <td class="px-3 py-2 text-nowrap">$${(service.price || 0).toFixed(2)}</td>
+                <td class="px-3 py-2 text-end">
+                    <button onclick="editService('${service.id}')" class="btn btn-sm btn-outline-primary me-2" title="Editar Servicio"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteService('${service.rowId}')" class="btn btn-sm btn-outline-danger" title="Eliminar Servicio (limpia la fila)"><i class="fas fa-trash"></i></button>
                 </td>`;
             serviceList.appendChild(row);
         });
@@ -1084,7 +1084,7 @@ function renderQuotesHistory() {
     if (!quotesHistoryList) {console.warn("Elemento quotesHistoryList no encontrado."); return;}
     quotesHistoryList.innerHTML = ''; // Limpiar
     if (quotesHistory.length === 0) {
-        quotesHistoryList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">No hay cotizaciones registradas en Google Sheets o no se pudieron cargar.</td></tr>`;
+        quotesHistoryList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No hay cotizaciones registradas en Google Sheets o no se pudieron cargar.</td></tr>`;
     } else {
         // Mostrar las más recientes primero
         [...quotesHistory].reverse().forEach(quote => {
@@ -1092,28 +1092,28 @@ function renderQuotesHistory() {
             // Usar fallbacks si client o name no existen
             const clientName = quote.client?.name || 'Cliente Desconocido';
             const pdfLinkHtml = quote.googlePdfId
-                ? `<a href="https://drive.google.com/file/d/${quote.googlePdfId}/view" target="_blank" class="text-red-600 hover:text-red-800 ml-2" title="Abrir PDF en Google Drive"><i class="fas fa-file-pdf"></i></a>`
+                ? `<a href="https://drive.google.com/file/d/${quote.googlePdfId}/view" target="_blank" class="btn btn-sm btn-outline-danger me-2" title="Abrir PDF en Google Drive"><i class="fas fa-file-pdf"></i></a>`
                 : '';
 
             row.innerHTML = `
-                <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">${quote.number || 'N/A'}</td>
-                <td class="px-4 py-3 whitespace-nowrap">${clientName}</td>
-                <td class="px-4 py-3 whitespace-nowrap">${quote.issueDate || 'N/A'}</td>
-                <td class="px-4 py-3 whitespace-nowrap font-semibold">$${(quote.total || 0).toFixed(2)}</td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                    <select onchange="updateQuoteStatus('${quote.id}', this.value, ${quote.rowId})" 
-                            class="p-1 rounded-md border-gray-300 text-xs focus:ring-indigo-500 focus:border-indigo-500 status-${quote.status || 'Pendiente'}" 
+                <td class="px-3 py-2 text-nowrap font-monospace">${quote.number || 'N/A'}</td>
+                <td class="px-3 py-2 text-nowrap">${clientName}</td>
+                <td class="px-3 py-2 text-nowrap">${quote.issueDate || 'N/A'}</td>
+                <td class="px-3 py-2 text-nowrap fw-semibold">$${(quote.total || 0).toFixed(2)}</td>
+                <td class="px-3 py-2 text-nowrap">
+                    <select onchange="updateQuoteStatus('${quote.id}', this.value, ${quote.rowId})"
+                            class="form-select form-select-sm status-${quote.status || 'Pendiente'}"
                             aria-label="Estado de la cotización ${quote.number}">
                         <option value="Pendiente" ${quote.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
                         <option value="Aceptada" ${quote.status === 'Aceptada' ? 'selected' : ''}>Aceptada</option>
                         <option value="Rechazada" ${quote.status === 'Rechazada' ? 'selected' : ''}>Rechazada</option>
                     </select>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                    <button onclick="loadQuoteForEdit('${quote.id}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Cargar cotización para editarla"><i class="fas fa-pencil-alt"></i></button>
-                    <button onclick="reprintQuote('${quote.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2" title="Ver / Reimprimir cotización"><i class="fas fa-eye"></i></button>
+                <td class="px-3 py-2 text-end">
+                    <button onclick="loadQuoteForEdit('${quote.id}')" class="btn btn-sm btn-outline-secondary me-2" title="Cargar cotización para editarla"><i class="fas fa-pencil-alt"></i></button>
+                    <button onclick="reprintQuote('${quote.id}')" class="btn btn-sm btn-outline-primary me-2" title="Ver / Reimprimir cotización"><i class="fas fa-eye"></i></button>
                     ${pdfLinkHtml}
-                    <button onclick="deleteQuote('${quote.id}', ${quote.rowId}, '${quote.googleDocId || ''}', '${quote.googlePdfId || ''}')" class="text-red-500 hover:text-red-700 ml-2" title="Eliminar cotización"><i class="fas fa-trash"></i></button>
+                    <button onclick="deleteQuote('${quote.id}', ${quote.rowId}, '${quote.googleDocId || ''}', '${quote.googlePdfId || ''}')" class="btn btn-sm btn-outline-danger ms-2" title="Eliminar cotización"><i class="fas fa-trash"></i></button>
                 </td>`;
             quotesHistoryList.appendChild(row);
         });
@@ -1640,7 +1640,7 @@ function renderQuoteItems() {
      if (!quoteItemsBody) return; // Chequeo
     quoteItemsBody.innerHTML = ''; // Limpiar tabla
     if (quoteItemsData.length === 0) {
-        quoteItemsBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Añada servicios a la cotización.</td></tr>`;
+        quoteItemsBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">Añada servicios a la cotización.</td></tr>`;
     } else {
         quoteItemsData.forEach((item, index) => {
             const row = document.createElement('tr');
@@ -1649,18 +1649,18 @@ function renderQuoteItems() {
             const totalPrice = (itemPrice * itemQuantity).toFixed(2);
             // Input de cantidad ahora llama a updateQuantity con 'index' y 'this'
             row.innerHTML = `
-                <td class="px-4 py-3 whitespace-normal align-top">
-                    <div class="font-medium text-gray-800">${item.name || 'N/A'}</div>
+                <td class="align-middle">
+                    <div class="fw-semibold text-dark">${item.name || 'N/A'}</div>
                 </td>
-                <td class="px-4 py-3 align-top">
-                    <input type="number" min="1" value="${itemQuantity}" onchange="updateQuantity(${index}, this)" class="w-20 p-1 border border-gray-300 rounded-md text-center">
+                <td class="align-middle" style="width: 110px;">
+                    <input type="number" min="1" value="${itemQuantity}" onchange="updateQuantity(${index}, this)" class="form-control form-control-sm text-center">
                 </td>
-                <td class="px-4 py-3 align-top text-right">
-                    <input type="number" min="0" step="0.01" value="${itemPrice.toFixed(2)}" onchange="updatePrice(${index}, this)" class="w-24 p-1 border border-gray-300 rounded-md text-right">
+                <td class="align-middle" style="width: 130px;">
+                    <input type="number" min="0" step="0.01" value="${itemPrice.toFixed(2)}" onchange="updatePrice(${index}, this)" class="form-control form-control-sm text-end">
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap font-medium align-top text-right">$${totalPrice}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-right align-top">
-                    <button onclick="removeQuoteItem(${index})" class="text-red-600 hover:text-red-900" title="Quitar Item"><i class="fas fa-trash"></i></button>
+                <td class="align-middle text-end fw-semibold">$${totalPrice}</td>
+                <td class="align-middle text-end">
+                    <button onclick="removeQuoteItem(${index})" class="btn btn-sm btn-outline-danger" title="Quitar Item"><i class="fas fa-trash"></i></button>
                 </td>`;
             quoteItemsBody.appendChild(row);
         });
@@ -1953,10 +1953,10 @@ function handlePortalClientChange() {
       }
 
     const clientId = portalClientSelect.value;
-    clientPortalContent.innerHTML = '<p class="text-gray-500 animate-pulse">Cargando...</p>'; 
+    clientPortalContent.innerHTML = '<p class="text-muted fst-italic">Cargando...</p>';
 
     if (!clientId) {
-        clientPortalContent.innerHTML = '<p class="text-gray-500">Seleccione un cliente para ver su historial.</p>';
+        clientPortalContent.innerHTML = '<p class="text-muted">Seleccione un cliente para ver su historial.</p>';
         return;
     }
 
@@ -1964,7 +1964,7 @@ function handlePortalClientChange() {
     const clientQuotes = quotesHistory.filter(q => q && q.client && q.client.id === clientId);
 
     if (clientQuotes.length === 0) {
-        clientPortalContent.innerHTML = '<p class="text-gray-500">Este cliente no tiene cotizaciones registradas.</p>';
+        clientPortalContent.innerHTML = '<p class="text-muted">Este cliente no tiene cotizaciones registradas.</p>';
         return;
     }
 
@@ -1972,17 +1972,17 @@ function handlePortalClientChange() {
     let contentHtml = '';
     [...clientQuotes].reverse().forEach(quote => {
         const pdfLinkHtml = quote.googlePdfId
-            ? `<a href="https://drive.google.com/file/d/${quote.googlePdfId}/view" target="_blank" class="text-sm text-red-600 hover:underline ml-2"><i class="fas fa-file-pdf mr-1"></i>Ver PDF</a>`
+            ? `<a href="https://drive.google.com/file/d/${quote.googlePdfId}/view" target="_blank" class="link-danger small ms-2"><i class="fas fa-file-pdf me-1"></i>Ver PDF</a>`
             : '';
         contentHtml += `
-            <div class="mb-6 pb-4 border-b border-gray-200 last:border-b-0">
-                <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
-                    <h3 class="text-lg font-semibold text-gray-800">${quote.number || 'N/A'}</h3>
+            <div class="mb-4 pb-3 border-bottom">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+                    <h3 class="h6 fw-semibold text-dark mb-0">${quote.number || 'N/A'}</h3>
                     <span class="status-badge status-${quote.status || 'Pendiente'}">${quote.status || 'Pendiente'}</span>
                 </div>
-                <p class="text-sm text-gray-600">
-                    <span class="mr-3">Emitida: ${quote.issueDate || 'N/A'}</span> |
-                    <span class="mx-3">Total: <b class="text-gray-900">$${(quote.total || 0).toFixed(2)}</b></span>
+                <p class="small text-secondary mb-0">
+                    <span class="me-3">Emitida: ${quote.issueDate || 'N/A'}</span> |
+                    <span class="mx-3">Total: <b class="text-dark">$${(quote.total || 0).toFixed(2)}</b></span>
                     ${pdfLinkHtml}
                 </p>
             </div>
@@ -2026,82 +2026,94 @@ function buildPrintableHtml(quoteData) {
          const itemQty = item.quantity || 1;
          const itemPrice = item.price || 0;
          const itemTotalPrice = itemPrice * itemQty;
-         return `<tr class="border-b">
-                     <td class="py-3 px-4 align-top"><p class="font-semibold">${itemName}</p></td>
+         return `<tr>
+                     <td class="py-3 px-4 align-top"><p class="fw-semibold mb-1">${itemName}</p></td>
                      <td class="py-3 px-4 text-center align-top">${itemQty}</td>
-                     <td class="py-3 px-4 text-right align-top">$${itemPrice.toFixed(2)}</td>
-                     <td class="py-3 px-4 text-right align-top">$${itemTotalPrice.toFixed(2)}</td>
+                     <td class="py-3 px-4 text-end align-top">$${itemPrice.toFixed(2)}</td>
+                     <td class="py-3 px-4 text-end align-top">$${itemTotalPrice.toFixed(2)}</td>
                  </tr>`;
      }).join('');
 
     // Generar sección de notas solo si hay notas
-    const notesHtml = quoteNotes ? `<div class="mt-10 pt-4 border-t"><h4 class="font-bold text-sm mb-2 uppercase">Notas Adicionales:</h4><p class="text-xs text-gray-600 whitespace-pre-wrap">${quoteNotes}</p></div>` : '';
+    const notesHtml = quoteNotes ? `<div class="border-top pt-3 mt-4"><h4 class="h6 text-uppercase text-secondary fw-bold mb-2">Notas adicionales</h4><p class="small text-secondary" style="white-space: pre-wrap;">${quoteNotes}</p></div>` : '';
 
     // Generar enlaces del footer solo si existen
     let footerLinksHtml = '';
-    const websiteLink = cs.website ? `<a href="${cs.website.startsWith('http') ? cs.website : 'https://' + cs.website}" target="_blank" class="text-sm mx-2" style="color: ${primaryColor}; text-decoration: none;">${cs.website.replace(/^(https?:\/\/)?(www\.)?/, '')}</a>` : '';
-    const whatsappLink = cs.whatsapp ? `<a href="https://wa.me/${cs.whatsapp.replace(/\D/g,'')}" target="_blank" class="text-sm mx-2" style="color: ${primaryColor}; text-decoration: none;"><i class="fab fa-whatsapp"></i> ${cs.whatsapp}</a>` : '';
+    const websiteLink = cs.website ? `<a href="${cs.website.startsWith('http') ? cs.website : 'https://' + cs.website}" target="_blank" class="me-2" style="color: ${primaryColor}; text-decoration: none;">${cs.website.replace(/^(https?:\/\/)?(www\.)?/, '')}</a>` : '';
+    const whatsappLink = cs.whatsapp ? `<a href="https://wa.me/${cs.whatsapp.replace(/\D/g,'')}" target="_blank" class="ms-2" style="color: ${primaryColor}; text-decoration: none;"><i class="fab fa-whatsapp"></i> ${cs.whatsapp}</a>` : '';
     if (websiteLink || whatsappLink) {
-        footerLinksHtml = `<div class="mb-4 text-center">${websiteLink}${websiteLink && whatsappLink ? '<span class="text-gray-400">|</span>' : ''}${whatsappLink}</div>`;
+        footerLinksHtml = `<div class="mb-3">${websiteLink}${websiteLink && whatsappLink ? '<span class="mx-2 text-muted">|</span>' : ''}${whatsappLink}</div>`;
     }
 
     // Construir el HTML final
     return `
-        <div class="p-8 max-w-4xl mx-auto bg-white font-sans text-sm">
-            <header class="flex justify-between items-start mb-10 pb-4 border-b">
-                <div class="w-1/2 pr-4">${logoHtml}</div>
-                <div class="w-1/2 text-right">
-                    <h1 class="text-3xl font-bold" style="color: ${primaryColor};">COTIZACIÓN</h1>
-                    <p class="text-gray-600 mt-1">Nº: <span class="font-mono">${quoteNumber}</span></p>
+        <div class="quote-print bg-white" style="font-family: 'Inter', Arial, sans-serif; max-width: 960px; margin: 0 auto; padding: 3rem;">
+            <header class="d-flex flex-wrap justify-content-between align-items-start pb-4 mb-4 border-bottom">
+                <div class="flex-grow-1 pe-md-4 mb-3 mb-md-0">${logoHtml}</div>
+                <div class="text-end">
+                    <h1 class="display-6 fw-bold mb-1" style="color: ${primaryColor};">COTIZACIÓN</h1>
+                    <p class="mb-0 text-secondary">Nº: <span class="font-monospace">${quoteNumber}</span></p>
                 </div>
             </header>
-            <div class="grid grid-cols-2 gap-8 mb-8">
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 class="font-bold text-gray-700 mb-2 uppercase text-xs tracking-wider">Cliente:</h3>
-                    <p class="font-semibold text-base">${clientName}</p>
-                    <p class="text-gray-600">RUC/C.I.: ${clientRuc}</p>
-                    <p class="text-gray-600">${clientContact}</p>
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="p-4 bg-light border rounded">
+                        <h3 class="h6 text-uppercase text-secondary fw-bold mb-2">Cliente</h3>
+                        <p class="fw-semibold mb-1">${clientName}</p>
+                        <p class="mb-1 text-secondary">RUC/C.I.: ${clientRuc}</p>
+                        <p class="mb-0 text-secondary">${clientContact}</p>
+                    </div>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 class="font-bold text-gray-700 mb-2 uppercase text-xs tracking-wider">De:</h3>
-                    <p class="font-semibold text-base">${companyName}</p>
-                    <p class="text-gray-600">${companyAddress}</p>
-                    <p class="text-gray-600">${companyContact}</p>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-8 mb-8">
-                <div>
-                     <h3 class="font-bold text-gray-700 mb-2 uppercase text-xs tracking-wider">Fechas:</h3>
-                     <p><span class="font-medium">Emitida:</span> ${quoteIssueDate}</p>
-                     <p><span class="font-medium">Válida hasta:</span> ${quoteValidityDate}</p>
+                <div class="col-md-6">
+                    <div class="p-4 bg-light border rounded">
+                        <h3 class="h6 text-uppercase text-secondary fw-bold mb-2">De</h3>
+                        <p class="fw-semibold mb-1">${companyName}</p>
+                        <p class="mb-1 text-secondary">${companyAddress}</p>
+                        <p class="mb-0 text-secondary">${companyContact}</p>
+                    </div>
                 </div>
             </div>
-            <table class="w-full mb-8 text-left border-collapse">
-                <thead style="background-color: ${primaryColor}; color: white;">
-                    <tr>
-                        <th class="py-2 px-4 text-left font-semibold uppercase text-xs tracking-wider">Descripción</th>
-                        <th class="py-2 px-4 text-center font-semibold uppercase text-xs tracking-wider">Cant.</th>
-                        <th class="py-2 px-4 text-right font-semibold uppercase text-xs tracking-wider">P. Unit.</th>
-                        <th class="py-2 px-4 text-right font-semibold uppercase text-xs tracking-wider">Total Item</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">${itemsHtml}</tbody>
-            </table>
-            <div class="flex justify-end">
-                <div class="w-full sm:w-1/2 lg:w-2/5">
-                    <div class="flex justify-between py-1 border-t border-gray-200"><span class="font-medium text-gray-600">Subtotal:</span><span class="text-gray-800">$${quoteSubtotal.toFixed(2)}</span></div>
-                    <div class="flex justify-between py-1"><span class="font-medium text-gray-600">IVA (${(IVA_RATE * 100).toFixed(0)}%):</span><span class="text-gray-800">$${quoteIva.toFixed(2)}</span></div>
-                    <div class="flex justify-between py-2 mt-2 border-t-2" style="border-color: ${primaryColor};">
-                        <span class="font-bold text-lg" style="color: ${accentColor};">TOTAL:</span>
-                        <span class="font-bold text-lg" style="color: ${accentColor};">$${quoteTotal.toFixed(2)}</span>
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <h3 class="h6 text-uppercase text-secondary fw-bold mb-2">Fechas</h3>
+                    <p class="mb-1"><span class="fw-semibold">Emitida:</span> ${quoteIssueDate}</p>
+                    <p class="mb-0"><span class="fw-semibold">Válida hasta:</span> ${quoteValidityDate}</p>
+                </div>
+            </div>
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead style="background-color: ${primaryColor}; color: #fff;">
+                        <tr>
+                            <th scope="col" class="text-uppercase small">Descripción</th>
+                            <th scope="col" class="text-uppercase small text-center" style="width: 100px;">Cant.</th>
+                            <th scope="col" class="text-uppercase small text-end" style="width: 140px;">P. Unit.</th>
+                            <th scope="col" class="text-uppercase small text-end" style="width: 140px;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itemsHtml}</tbody>
+                </table>
+            </div>
+            <div class="row justify-content-end mb-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="d-flex justify-content-between border-top pt-2">
+                        <span class="fw-semibold text-secondary">Subtotal:</span>
+                        <span class="fw-semibold">$${quoteSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between pt-2">
+                        <span class="fw-semibold text-secondary">IVA (${(IVA_RATE * 100).toFixed(0)}%):</span>
+                        <span class="fw-semibold">$${quoteIva.toFixed(2)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-top mt-3 pt-3" style="border-color: ${primaryColor};">
+                        <span class="fw-bold fs-5" style="color: ${accentColor};">TOTAL:</span>
+                        <span class="fw-bold fs-5" style="color: ${accentColor};">$${quoteTotal.toFixed(2)}</span>
                     </div>
                 </div>
             </div>
             ${notesHtml}
-            <footer class="mt-16 pt-6 border-t text-center text-gray-500 text-xs">
+            <footer class="border-top pt-4 text-center text-muted small">
                 ${footerLinksHtml}
                 <p class="mb-1">Gracias por su preferencia.</p>
-                <p>Esta cotización es un documento informativo generado por sistema.</p>
+                <p class="mb-0">Esta cotización es un documento informativo generado por sistema.</p>
             </footer>
         </div>
     `;

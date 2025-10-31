@@ -3,301 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Herramienta de Cotización v12 (Google API)</title> <!-- v12 -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Herramienta de Cotización v12 (Google API)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- --- GOOGLE API --- -->
-    <!-- Scripts movidos al final del body -->
-    <!-- --- FIN GOOGLE API --- -->
-
     <link rel="stylesheet" href="css/app.css">
 </head>
-<body>
+<body class="bg-light">
 
-    <!-- --- GOOGLE API --- -->
-    <!-- Pantalla de Bloqueo MODIFICADA para Google Sign-In -->
-    <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Acceso al Cotizador</h2>
-            <p class="text-gray-600 mb-6">Inicia sesión con tu cuenta de Google para acceder a los datos.</p>
-            <!-- Botón deshabilitado hasta que las APIs estén listas -->
-            <button id="google-login-btn" disabled class="bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 font-semibold flex items-center justify-center w-full disabled:opacity-50 disabled:cursor-not-allowed">
-                <i class="fab fa-google mr-3"></i>
-                Iniciar Sesión con Google
+    <div id="login-overlay" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center">
+        <div class="card shadow-sm p-4 w-100" style="max-width: 360px;">
+            <h2 class="h4 text-center mb-3">Acceso al Cotizador</h2>
+            <p class="text-muted text-center mb-4">Inicia sesión con tu cuenta de Google para acceder a los datos.</p>
+            <button id="google-login-btn" disabled class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
+                <i class="fab fa-google"></i>
+                <span>Iniciar Sesión con Google</span>
             </button>
-            <div id="loading-spinner" class="spinner mx-auto mt-6" style="display: none;"></div>
-            <p id="auth-status" class="text-sm text-gray-500 mt-4">Cargando APIs de Google...</p>
+            <div id="loading-spinner" class="spinner-border text-primary mx-auto mt-4" role="status" style="display: none;">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p id="auth-status" class="text-muted small text-center mt-3 mb-0">Cargando APIs de Google...</p>
         </div>
     </div>
-    <!-- --- FIN GOOGLE API --- -->
 
-
-    <!-- Contenido Principal de la App (inicialmente oculto) -->
-    <div id="app-container" class="container app-shell" style="display: none;">
-
-        <header class="app-header">
+    <div id="app-container" class="container py-4" style="display: none;">
+        <header class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
             <div>
-                <h1>Herramienta de Cotización y Gestión</h1>
-                <p>Conectado a Google Drive</p>
+                <h1 class="h3 mb-1">Herramienta de Cotización y Gestión</h1>
+                <p class="text-muted mb-0">Conectado a Google Drive</p>
             </div>
-            <div class="no-print">
-                <p id="user-email" class="text-sm"></p>
-                <button id="google-logout-btn" class="btn btn-light">Cerrar Sesión</button>
+            <div class="text-lg-end">
+                <p id="user-email" class="text-muted small mb-2"></p>
+                <button id="google-logout-btn" class="btn btn-outline-secondary btn-sm">Cerrar Sesión</button>
             </div>
         </header>
 
-        <!-- Pestañas de Navegación -->
-        <div class="tab-bar no-print" aria-label="Tabs">
-            <button class="tab-button active" onclick="changeTab(event, 'cotizador')"><i class="fas fa-file-invoice-dollar"></i>Cotizador</button>
-            <button class="tab-button" onclick="changeTab(event, 'historial')"><i class="fas fa-history"></i>Historial</button>
-            <button class="tab-button" onclick="changeTab(event, 'contratos')"><i class="fas fa-file-signature"></i>Contratos</button>
-            <button class="tab-button" onclick="changeTab(event, 'portal')"><i class="fas fa-user-check"></i>Portal Cliente</button>
-            <button class="tab-button" onclick="changeTab(event, 'clientes')"><i class="fas fa-users"></i>Clientes</button>
-            <button class="tab-button" onclick="changeTab(event, 'servicios')"><i class="fas fa-concierge-bell"></i>Servicios</button>
-            <button class="tab-button" onclick="changeTab(event, 'configuracion')"><i class="fas fa-cog"></i>Configuración</button>
+        <div class="nav nav-pills flex-wrap gap-2 mb-4" role="tablist">
+            <button class="btn btn-outline-primary tab-button active" onclick="changeTab(event, 'cotizador')" type="button"><i class="fas fa-file-invoice-dollar me-2"></i>Cotizador</button>
+            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'historial')" type="button"><i class="fas fa-history me-2"></i>Historial</button>
+            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'contratos')" type="button"><i class="fas fa-file-signature me-2"></i>Contratos</button>
+            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'portal')" type="button"><i class="fas fa-user-check me-2"></i>Portal Cliente</button>
+            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'clientes')" type="button"><i class="fas fa-users me-2"></i>Clientes</button>
+            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'servicios')" type="button"><i class="fas fa-concierge-bell me-2"></i>Servicios</button>
+            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'configuracion')" type="button"><i class="fas fa-cog me-2"></i>Configuración</button>
         </div>
 
-        <!-- Contenido de las Pestañas -->
         <main>
-            <!-- Pestaña: Cotizador -->
             <div id="cotizador" class="tab-content active">
-                <div class="layout-two-columns">
-                    <div class="card">
-                        <h2 class="section-title">Crear Nueva Cotización</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="quoteClient">Seleccionar Cliente</label>
-                                <select id="quoteClient"></select>
-                            </div>
-                            <div>
-                                <label for="quoteRUC">RUC / C.I.</label>
-                                <input type="text" id="quoteRUC" readonly>
-                            </div>
-                            <div>
-                                <label for="quoteNumber">Nº Cotización (previsualización)</label>
-                                <input type="text" id="quoteNumber" readonly>
-                            </div>
-                            <div>
-                                <label for="quoteDate">Fecha de Validez</label>
-                                <input type="date" id="quoteDate">
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h2 class="h5 mb-4">Crear Nueva Cotización</h2>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="quoteClient" class="form-label">Seleccionar Cliente</label>
+                                        <select id="quoteClient" class="form-select"></select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="quoteRUC" class="form-label">RUC / C.I.</label>
+                                        <input type="text" id="quoteRUC" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="quoteNumber" class="form-label">Nº Cotización (previsualización)</label>
+                                        <input type="text" id="quoteNumber" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="quoteDate" class="form-label">Fecha de Validez</label>
+                                        <input type="date" id="quoteDate" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="row g-3 align-items-end mt-1">
+                                    <div class="col-md">
+                                        <label for="serviceSelect" class="form-label">Añadir Servicio</label>
+                                        <select id="serviceSelect" class="form-select"></select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="servicePriceOverride" class="form-label">Precio</label>
+                                        <input type="number" id="servicePriceOverride" class="form-control" min="0" step="0.01" placeholder="0.00" disabled>
+                                    </div>
+                                    <div class="col-md-auto">
+                                        <button onclick="addServiceToQuote()" class="btn btn-primary w-100"><i class="fas fa-plus me-2"></i>Añadir</button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive mt-4">
+                                    <table class="table table-striped align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Servicio / Descripción</th>
+                                                <th class="text-center">Cantidad</th>
+                                                <th class="text-end">P. Unitario</th>
+                                                <th class="text-end">Total</th>
+                                                <th class="text-end">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="quoteItems"></tbody>
+                                    </table>
+                                </div>
+                                <div class="mt-4">
+                                    <label for="quoteNotes" class="form-label">Notas Adicionales</label>
+                                    <textarea id="quoteNotes" class="form-control" rows="3" placeholder="Ej: Términos y condiciones, detalles específicos del proyecto..."></textarea>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex flex-col md:flex-row md:items-end gap-4 mt-6">
-                            <div class="flex-grow">
-                                <label for="serviceSelect">Añadir Servicio</label>
-                                <select id="serviceSelect"></select>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card shadow-sm resumen-card">
+                            <div class="card-body">
+                                <h2 class="h5 mb-4">Resumen</h2>
+                                <div class="summary-line"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+                                <div class="summary-line"><span>IVA (15%)</span><span id="iva">$0.00</span></div>
+                                <div class="summary-total"><span id="total-label">TOTAL</span><span id="total">$0.00</span></div>
+                                <button id="generate-quote-btn" onclick="generatePrintableQuote()" class="btn btn-primary w-100 mt-4">
+                                    <i class="fas fa-file-circle-plus me-2"></i>Generar y Guardar Cotización
+                                </button>
                             </div>
-                            <div class="w-full md:w-36">
-                                <label for="servicePriceOverride">Precio</label>
-                                <input type="number" id="servicePriceOverride" min="0" step="0.01" placeholder="0.00" disabled>
-                            </div>
-                            <button onclick="addServiceToQuote()" class="btn btn-accent md:w-auto w-full"><i class="fas fa-plus"></i> Añadir</button>
                         </div>
-                        <div class="table-wrapper mt-6">
-                            <table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="historial" class="tab-content">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-4">Historial de Cotizaciones</h2>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
                                 <thead>
                                     <tr>
-                                        <th>Servicio / Descripción</th>
-                                        <th>Cantidad</th>
-                                        <th>P. Unitario</th>
+                                        <th>Nº Cotización</th>
+                                        <th>Cliente</th>
+                                        <th>Fecha</th>
                                         <th>Total</th>
-                                        <th class="text-right">Acción</th>
+                                        <th>Estado</th>
+                                        <th class="text-end">Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody id="quoteItems"></tbody>
+                                <tbody id="quotesHistoryList"></tbody>
                             </table>
                         </div>
-                        <div class="mt-6">
-                            <label for="quoteNotes">Notas Adicionales para esta Cotización</label>
-                            <textarea id="quoteNotes" rows="3" placeholder="Ej: Términos y condiciones, detalles específicos del proyecto..."></textarea>
-                        </div>
-                    </div>
-                    <div class="card resumen">
-                        <h2 class="section-title">Resumen</h2>
-                        <div class="resumen-line"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
-                        <div class="resumen-line"><span>IVA (15%)</span><span id="iva">$0.00</span></div>
-                        <div class="total total-line"><span id="total-label">TOTAL</span><span id="total">$0.00</span></div>
-                        <button id="generate-quote-btn" onclick="generatePrintableQuote()" class="btn btn-primary w-full mt-6">
-                            <i class="fas fa-file-circle-plus"></i> Generar y Guardar Cotización
-                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Pestaña: Historial -->
-            <div id="historial" class="tab-content">
-                <div class="card">
-                    <h2 class="section-title">Historial de Cotizaciones (Desde Google Sheets)</h2>
-                    <div class="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Nº Cotización</th>
-                                    <th>Cliente</th>
-                                    <th>Fecha</th>
-                                    <th>Total</th>
-                                    <th>Estado</th>
-                                    <th class="text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="quotesHistoryList"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pestaña: Contratos -->
             <div id="contratos" class="tab-content">
-                <div class="card">
-                    <h2 class="section-title">Gestión de Contratos</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <div class="field-group">
-                                <label for="contract-client-select">1. Seleccione un Cliente</label>
-                                <select id="contract-client-select"></select>
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-4">Gestión de Contratos</h2>
+                        <div class="row g-4">
+                            <div class="col-lg-4">
+                                <label for="contract-client-select" class="form-label">1. Seleccione un Cliente</label>
+                                <select id="contract-client-select" class="form-select mb-3"></select>
+                                <label for="contract-quote-select" class="form-label">2. Seleccione Cotización Aceptada</label>
+                                <select id="contract-quote-select" class="form-select"></select>
                             </div>
-                            <div class="field-group">
-                                <label for="contract-quote-select">2. Seleccione Cotización Aceptada</label>
-                                <select id="contract-quote-select"></select>
+                            <div class="col-lg-8">
+                                <label for="contract-text" class="form-label">3. Redacte el contrato</label>
+                                <textarea id="contract-text" class="form-control" rows="12" placeholder="Contenido del contrato..."></textarea>
+                                <button id="save-contract-btn" class="btn btn-primary w-100 mt-3" disabled>Guardar Contrato en Google Docs</button>
                             </div>
-                        </div>
-                        <div class="md:col-span-2 field-group">
-                            <label for="contract-text">3. Redacte el contrato (se guardará en Google Docs)</label>
-                            <textarea id="contract-text" rows="10" placeholder="Contenido del contrato..."></textarea>
-                            <button id="save-contract-btn" class="btn btn-primary w-full mt-4" disabled>Guardar Contrato en Google Docs</button>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Pestaña: Portal Cliente -->
+
             <div id="portal" class="tab-content">
-                <div class="card">
-                    <h2 class="section-title">Vista Portal Cliente</h2>
-                    <div class="field-group" style="max-width: 420px;">
-                        <label for="portal-client-select">Seleccione un cliente para ver su portal</label>
-                        <select id="portal-client-select"></select>
-                    </div>
-                    <div id="client-portal-content" class="field-group" style="border-top: 1px solid var(--color-border); padding-top: 1rem;">
-                        <p style="color: var(--color-muted); font-size: 0.95rem;">Seleccione un cliente para empezar.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pestaña: Clientes -->
-            <div id="clientes" class="tab-content">
-                <div class="layout-two-columns">
-                    <div class="card">
-                        <h2 class="section-title">Añadir/Editar Cliente</h2>
-                        <form id="clientForm"><input type="hidden" id="clientId">
-                            <!-- --- GOOGLE API --- -->
-                            <!-- 'clientId' ahora será el 'rowId' de Google Sheets para saber qué fila editar -->
-                            <input type="hidden" id="clientRowId">
-                            <!-- --- FIN GOOGLE API --- -->
-                            <!-- CAMPO ELIMINADO: Código de Cliente (no está en tu Sheet) -->
-                            <div class="field-group"><label for="clientName">Razón Social</label><input type="text" id="clientName" required></div>
-                            <div class="field-group"><label for="clientRUC">RUC / C.I. (Identificación No.)</label><input type="text" id="clientRUC" required></div>
-                            <div class="field-group"><label for="clientContact">Contacto (Email o Teléfono)</label><input type="text" id="clientContact"></div>
-                            <!-- CAMPO IGNORADO: clientCode (no se usa) -->
-                            <input type="hidden" id="clientCode">
-                            <button type="submit" class="btn btn-primary w-full">Guardar Cliente en Google Sheets</button>
-                        </form>
-                    </div>
-                    <div class="card">
-                        <h2 class="section-title">Lista de Clientes (Desde Google Sheets)</h2>
-                        <div class="table-wrapper"><table><thead><tr><th>RUC / C.I.</th><th>Razón Social</th><th>Contacto</th><th class="text-right">Acciones</th></tr></thead><tbody id="clientList"></tbody></table></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pestaña: Servicios -->
-            <div id="servicios" class="tab-content">
-                <div class="layout-two-columns">
-                    <div class="card">
-                        <h2 class="section-title">Añadir/Editar Servicio</h2>
-                        <form id="serviceForm">
-                            <input type="hidden" id="serviceId">
-                            <!-- --- GOOGLE API --- -->
-                            <input type="hidden" id="serviceRowId">
-                            <!-- --- FIN GOOGLE API --- -->
-                            <!-- Campo serviceName se mapeará a 'description' en el Sheet -->
-                            <div class="field-group"><label for="serviceName">Nombre/Descripción del Servicio</label><input type="text" id="serviceName" required></div>
-                            <!-- Campo Oculto: serviceDescription (no está en tu sheet) -->
-                            <textarea id="serviceDescription" rows="4" class="hidden"></textarea>
-                            <div class="field-group"><label for="servicePrice">Precio Unitario ($)</label><input type="number" step="0.01" id="servicePrice" required></div>
-                            <button type="submit" class="btn btn-primary w-full">Guardar Servicio en Google Sheets</button></form>
-                    </div>
-                    <div class="card">
-                        <h2 class="section-title">Lista de Servicios (Desde Google Sheets)</h2>
-                        <div class="table-wrapper"><table><thead><tr><th>Servicio (Descripción)</th><th>Precio</th><th class="text-right">Acciones</th></tr></thead><tbody id="serviceList"></tbody></table></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pestaña: Configuración -->
-            <div id="configuracion" class="tab-content">
-                <div class="card" style="max-width: 720px; margin: 0 auto;">
-                    <h2 class="section-title">Configuración de la Empresa y Cotización</h2>
-                    <p style="color: var(--color-muted); font-size: 0.95rem; margin-bottom: 1rem;">Esta configuración se guarda localmente en tu navegador. Puedes moverla a una hoja de "Configuración" de Google Sheets si lo deseas.</p>
-                    <form id="configForm">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="field-group">
-                                <label for="companyName">Nombre de la Empresa</label>
-                                <input type="text" id="companyName" placeholder="Ej: Mi Empresa S.A.">
-                            </div>
-                            <div class="field-group">
-                                <label for="companyAddress">Dirección</label>
-                                <input type="text" id="companyAddress" placeholder="Ej: Av. Principal 123, Ciudad">
-                            </div>
-                            <div class="field-group">
-                                <label for="companyContact">Contacto (Email/Teléfono)</label>
-                                <input type="text" id="companyContact" placeholder="Ej: ventas@miempresa.com / +593 99 123 4567">
-                            </div>
-                            <div class="field-group">
-                                <label for="companyWebsite">Sitio Web (URL)</label>
-                                <input type="url" id="companyWebsite" placeholder="https://www.suempresa.com">
-                            </div>
-                            <div class="field-group">
-                                <label for="companyWhatsapp">Número de WhatsApp</label>
-                                <input type="tel" id="companyWhatsapp" placeholder="593991234567">
-                                <p style="font-size: 0.8rem; color: var(--color-muted);">Incluye el código de país sin el signo "+". Ej: 593991234567</p>
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-4">Vista Portal Cliente</h2>
+                        <div class="row g-3 align-items-end mb-3" style="max-width: 420px;">
+                            <div class="col-12">
+                                <label for="portal-client-select" class="form-label">Seleccione un cliente</label>
+                                <select id="portal-client-select" class="form-select"></select>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="field-group">
-                                <label for="logoUpload">Logo de la Empresa</label>
-                                <input type="file" id="logoUpload" accept="image/*" class="file-input">
+                        <div id="client-portal-content">
+                            <p class="text-muted mb-0">Seleccione un cliente para empezar.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="clientes" class="tab-content">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h2 class="h5 mb-4">Añadir / Editar Cliente</h2>
+                                <form id="clientForm" class="row g-3">
+                                    <input type="hidden" id="clientId">
+                                    <input type="hidden" id="clientRowId">
+                                    <div class="col-12">
+                                        <label for="clientName" class="form-label">Razón Social</label>
+                                        <input type="text" id="clientName" class="form-control" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="clientRUC" class="form-label">RUC / C.I. (Identificación No.)</label>
+                                        <input type="text" id="clientRUC" class="form-control" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="clientContact" class="form-label">Contacto (Email o Teléfono)</label>
+                                        <input type="text" id="clientContact" class="form-control">
+                                    </div>
+                                    <input type="hidden" id="clientCode">
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary w-100">Guardar Cliente en Google Sheets</button>
+                                    </div>
+                                </form>
                             </div>
-                            <div class="field-group">
-                                <label>Vista Previa</label>
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h2 class="h5 mb-4">Lista de Clientes</h2>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>RUC / C.I.</th>
+                                                <th>Razón Social</th>
+                                                <th>Contacto</th>
+                                                <th class="text-end">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="clientList"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="servicios" class="tab-content">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h2 class="h5 mb-4">Añadir / Editar Servicio</h2>
+                                <form id="serviceForm" class="row g-3">
+                                    <input type="hidden" id="serviceId">
+                                    <input type="hidden" id="serviceRowId">
+                                    <div class="col-12">
+                                        <label for="serviceName" class="form-label">Nombre / Descripción del Servicio</label>
+                                        <input type="text" id="serviceName" class="form-control" required>
+                                    </div>
+                                    <textarea id="serviceDescription" class="d-none"></textarea>
+                                    <div class="col-12">
+                                        <label for="servicePrice" class="form-label">Precio Unitario ($)</label>
+                                        <input type="number" id="servicePrice" class="form-control" step="0.01" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary w-100">Guardar Servicio en Google Sheets</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h2 class="h5 mb-4">Lista de Servicios</h2>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Servicio (Descripción)</th>
+                                                <th>Precio</th>
+                                                <th class="text-end">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="serviceList"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="configuracion" class="tab-content">
+                <div class="card shadow-sm" style="max-width: 720px; margin: 0 auto;">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Configuración de la Empresa y Cotización</h2>
+                        <p class="text-muted small">Esta configuración se guarda localmente en tu navegador. Puedes moverla a una hoja de "Configuración" de Google Sheets si lo deseas.</p>
+                        <form id="configForm" class="row g-3">
+                            <div class="col-md-6">
+                                <label for="companyName" class="form-label">Nombre de la Empresa</label>
+                                <input type="text" id="companyName" class="form-control" placeholder="Ej: Mi Empresa S.A.">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="companyAddress" class="form-label">Dirección</label>
+                                <input type="text" id="companyAddress" class="form-control" placeholder="Ej: Av. Principal 123, Ciudad">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="companyContact" class="form-label">Contacto (Email/Teléfono)</label>
+                                <input type="text" id="companyContact" class="form-control" placeholder="Ej: ventas@miempresa.com / +593 99 123 4567">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="companyWebsite" class="form-label">Sitio Web (URL)</label>
+                                <input type="url" id="companyWebsite" class="form-control" placeholder="https://www.suempresa.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="companyWhatsapp" class="form-label">Número de WhatsApp</label>
+                                <input type="tel" id="companyWhatsapp" class="form-control" placeholder="593991234567">
+                                <small class="text-muted">Incluye el código de país sin el signo "+". Ej: 593991234567</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="logoUpload" class="form-label">Logo de la Empresa</label>
+                                <input type="file" id="logoUpload" class="form-control" accept="image/*">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Vista Previa</label>
                                 <div class="logo-preview-wrapper">
                                     <img id="logoPreview" src="https://placehold.co/200x100/eef2ff/4f46e5?text=Tu+Logo" alt="Vista previa del logo">
                                 </div>
                             </div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div class="field-group">
-                                <label for="primaryColor">Color Primario</label>
-                                <input type="color" id="primaryColor">
+                            <div class="col-md-3">
+                                <label for="primaryColor" class="form-label">Color Primario</label>
+                                <input type="color" id="primaryColor" class="form-control form-control-color">
                             </div>
-                            <div class="field-group">
-                                <label for="accentColor">Color de Acento</label>
-                                <input type="color" id="accentColor">
+                            <div class="col-md-3">
+                                <label for="accentColor" class="form-label">Color de Acento</label>
+                                <input type="color" id="accentColor" class="form-control form-control-color">
                             </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-full">Guardar Configuración Local</button>
-                    </form>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary w-100">Guardar Configuración Local</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Área de Impresión (oculta por defecto) -->
     <div id="print-area"></div>
 
-    <!-- --- INICIO MODAL PERSONALIZADO --- -->
     <div id="custom-modal-overlay" class="modal-overlay">
         <div class="modal-container">
             <h3 id="custom-modal-title" class="modal-title">Confirmación</h3>
@@ -308,22 +350,10 @@
             </div>
         </div>
     </div>
-    <!-- --- FIN MODAL PERSONALIZADO --- -->
 
-
-    <!-- Librerías para generar PDF desde HTML -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNa5lR4CemkFDZXS6jttuPAHyBs+K6TfGsDz3jHK5vVsQt1zAr72Xd1LSeX776BFqe7WV/Dr7guPIRAn3hW0gA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-/6A9kZ7VDaRao7IhiHBpjz2uVH54camzatoNgtrENEM9D2kSsqn1HULICwhf66A1VpzwuWgxeqmoeZaZX3GdBA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-    <!-- --- GOOGLE API SCRIPT --- -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="js/app.js"></script>
-
-    
-    <!-- Scripts de Google SIN onload, se cargan y manejan desde initializeApp -->
-    <!-- <script async defer src="https://apis.google.com/js/api.js"></script> -->
-    <!-- <script async defer src="https://accounts.google.com/gsi/client"></script> -->
-    <!-- Los scripts se añaden dinámicamente en initializeApp -->
-    <!-- Fin del documento -->
-
 </body>
 </html>

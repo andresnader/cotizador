@@ -160,7 +160,7 @@ async function savePdfToDriveFromDoc(docId, pdfName, targetFolderId = QUOTES_DRI
     // Dar un pequeño margen para que Google Docs termine de aplicar los reemplazos
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    const exportUrl = `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`;
+    const exportUrl = `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf&supportsAllDrives=true`;
     const exportResponse = await fetch(exportUrl, {
         headers: {
             Authorization: `Bearer ${accessToken}`
@@ -179,9 +179,11 @@ async function savePdfToDriveFromDoc(docId, pdfName, targetFolderId = QUOTES_DRI
 
     const metadata = {
         name: pdfName,
-        mimeType: 'application/pdf',
-        parents: [targetFolderId]
+        mimeType: 'application/pdf'
     };
+    if (targetFolderId) {
+        metadata.parents = [targetFolderId];
+    }
 
     const boundary = '-------314159265358979323846';
     const delimiter = `\r\n--${boundary}\r\n`;
@@ -196,7 +198,7 @@ async function savePdfToDriveFromDoc(docId, pdfName, targetFolderId = QUOTES_DRI
         base64Data +
         closeDelimiter;
 
-    const uploadResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    const uploadResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -211,6 +213,9 @@ async function savePdfToDriveFromDoc(docId, pdfName, targetFolderId = QUOTES_DRI
     }
 
     const uploadResult = await uploadResponse.json();
+    if (uploadResult?.parents) {
+        console.log('PDF guardado en Drive con ID:', uploadResult.id, 'padres:', uploadResult.parents);
+    }
     return uploadResult?.id || null;
 }
 
@@ -219,7 +224,8 @@ async function trashDriveFile(fileId) {
     try {
         await gapi.client.drive.files.update({
             fileId,
-            resource: { trashed: true }
+            resource: { trashed: true },
+            supportsAllDrives: true
         });
     } catch (error) {
         console.error('Error enviando archivo a la papelera en Drive:', error);
@@ -1225,9 +1231,14 @@ async function handleSaveContractClick() {
         if (CONTRACTS_DRIVE_FOLDER_ID) {
             copyPayload.resource.parents = [CONTRACTS_DRIVE_FOLDER_ID];
         }
-        const copyResponse = await gapi.client.drive.files.copy(copyPayload);
+        const copyResponse = await gapi.client.drive.files.copy({
+            ...copyPayload,
+            supportsAllDrives: true,
+            fields: 'id, parents'
+        });
         const newDocId = copyResponse.result.id;
-        console.log("Plantilla copiada, nuevo ID de contrato:", newDocId);
+        const assignedParents = copyResponse.result.parents || [];
+        console.log("Plantilla copiada, nuevo ID de contrato:", newDocId, "con padres:", assignedParents);
 
         // 3. Reemplazar placeholders básicos (igual que en cotización) + insertar texto principal
         console.log("Reemplazando placeholders básicos en contrato...");
@@ -1486,10 +1497,13 @@ async function createQuoteAsGoogleDoc(quoteData) {
         }
         const copyResponse = await gapi.client.drive.files.copy({
             fileId: CONTRACT_TEMPLATE_ID,
-            resource: copyResource
+            resource: copyResource,
+            supportsAllDrives: true,
+            fields: 'id, parents'
         });
         const newDocId = copyResponse.result.id;
-         console.log("Documento copiado, nuevo ID:", newDocId);
+        const assignedParents = copyResponse.result.parents || [];
+        console.log("Documento copiado, nuevo ID:", newDocId, "con padres:", assignedParents);
 
         // 2. Preparar las solicitudes de reemplazo de texto
         const requests = [

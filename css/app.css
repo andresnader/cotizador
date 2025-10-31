@@ -57,6 +57,16 @@ input[type="color"]::-webkit-color-swatch {
     100% { transform: rotate(360deg); }
 }
 
+#print-area {
+    position: fixed;
+    top: -10000px;
+    left: -10000px;
+    width: 794px;
+    max-width: 100%;
+    background-color: #ffffff;
+    z-index: -1;
+}
+
 /* --- ESTILOS PARA EL MODAL PERSONALIZADO --- */
 .modal-overlay {
         visibility: hidden;
@@ -134,15 +144,19 @@ input[type="color"]::-webkit-color-swatch {
     body * {
         visibility: hidden;
     }
-    #print-area, #print-area * {
+
+    #print-area,
+    #print-area * {
         visibility: visible;
     }
+
     #print-area {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
     }
+
     .no-print {
         display: none;
     }

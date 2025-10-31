@@ -1304,8 +1304,8 @@ async function handleSaveContractClick() {
 }
 
 
-// --- LÓGICA DE GENERACIÓN (PRINT / GOOGLE DOCS) ---
-async function generatePrintableQuote(saveToDrive = false) {
+// --- LÓGICA DE GENERACIÓN Y GUARDADO DE COTIZACIÓN ---
+async function generatePrintableQuote() {
      // Revalidar IDs cruciales antes de proceder
      let configOk = true;
      // Usar IDs reales en la comprobación
@@ -1313,10 +1313,10 @@ async function generatePrintableQuote(saveToDrive = false) {
          showAlert("Falta configurar el ID de la Hoja de Historial (QUOTES_SHEET_ID).", "Error de Configuración"); // REEMPLAZO
          configOk = false;
      }
-     if (saveToDrive && (!CONTRACT_TEMPLATE_ID || CONTRACT_TEMPLATE_ID === 'ID_DE_TU_PLANTILLA_DE_CONTRATO_EN_GOOGLE_DOCS')) { 
-         showAlert("Falta configurar el ID de la Plantilla de Contrato (CONTRACT_TEMPLATE_ID) para guardar en Drive.", "Error de Configuración"); // REEMPLAZO
-         configOk = false;
-     }
+    if (!CONTRACT_TEMPLATE_ID || CONTRACT_TEMPLATE_ID === 'ID_DE_TU_PLANTILLA_DE_CONTRATO_EN_GOOGLE_DOCS') {
+        showAlert("Falta configurar el ID de la Plantilla de Contrato (CONTRACT_TEMPLATE_ID).", "Error de Configuración");
+        configOk = false;
+    }
      if (!configOk) return;
 
      // Chequeos de elementos y datos
@@ -1366,28 +1366,23 @@ async function generatePrintableQuote(saveToDrive = false) {
     // Añadir compañía actual para la impresión offline
      quoteRecord.companySettingsForPrint = { ...companySettings };
 
-    // Deshabilitar botones mientras procesa
-     const printButton = document.querySelector('button[onclick="generatePrintableQuote(false)"]');
-     const driveButton = document.querySelector('button[onclick="generatePrintableQuote(true)"]');
-     if(printButton) printButton.disabled = true;
-     if(driveButton) driveButton.disabled = true;
-     if(authStatus) authStatus.innerText = saveToDrive ? 'Generando y guardando...' : 'Generando para imprimir...';
+    const generateBtn = document.getElementById('generate-quote-btn');
+    if (generateBtn) generateBtn.disabled = true;
+    if (authStatus) authStatus.innerText = 'Generando y guardando cotización...';
 
 
     try {
-        if (saveToDrive) {
-            if (authStatus) authStatus.innerText = 'Creando documento en Google Drive...';
-             console.log("Intentando crear Doc para cotización:", quoteRecord);
-            const driveAssets = await createQuoteAsGoogleDoc(quoteRecord);
-            const docIdFromDrive = driveAssets?.docId || null;
-            const pdfIdFromDrive = driveAssets?.pdfId || null;
-            quoteRecord.googleDocId = docIdFromDrive;
-            quoteRecord.googlePdfId = pdfIdFromDrive;
-            let successMessage = 'Documento creado/actualizado exitosamente en Google Drive.';
-            if (docIdFromDrive) successMessage += `\nID de documento: ${docIdFromDrive}`;
-            if (pdfIdFromDrive) successMessage += `\nPDF almacenado con ID: ${pdfIdFromDrive}`;
-            showAlert(`${successMessage}\nSe guardará el enlace en el historial.`, "Documento Creado"); // REEMPLAZO
-        }
+        if (authStatus) authStatus.innerText = 'Creando documento en Google Drive...';
+        console.log("Intentando crear Doc para cotización:", quoteRecord);
+        const driveAssets = await createQuoteAsGoogleDoc(quoteRecord);
+        const docIdFromDrive = driveAssets?.docId || null;
+        const pdfIdFromDrive = driveAssets?.pdfId || null;
+        quoteRecord.googleDocId = docIdFromDrive;
+        quoteRecord.googlePdfId = pdfIdFromDrive;
+        let successMessage = 'Documento creado/actualizado exitosamente en Google Drive.';
+        if (docIdFromDrive) successMessage += `\nID de documento: ${docIdFromDrive}`;
+        if (pdfIdFromDrive) successMessage += `\nPDF almacenado con ID: ${pdfIdFromDrive}`;
+        showAlert(`${successMessage}\nSe guardará el enlace en el historial.`, "Documento Creado");
 
         // Preparar datos para Google Sheets (columnas A-K)
         const sheetRowData = [
@@ -1424,24 +1419,18 @@ async function generatePrintableQuote(saveToDrive = false) {
         renderQuotesHistory(); // Redibujar tabla de historial
         quoteCounter = quotesHistory.length + 1; // Actualizar contador
 
-        // Imprimir si no se guardó en Drive
-        if (!saveToDrive) {
-             if (authStatus) authStatus.innerText = 'Preparando impresión...';
-            const printArea = document.getElementById('print-area');
-             if (printArea) {
-                  // Pasar la configuración actual para imprimir
-                  printArea.innerHTML = buildPrintableHtml({...quoteRecord, companySettings: companySettings }); 
-                  setTimeout(() => {
-                       window.print();
-                       if (authStatus) authStatus.innerText = 'Listo.'; // Actualizar estado después de imprimir
-                   }, 500); // Dar tiempo a renderizar
-             } else {
-                  console.error("Elemento 'print-area' no encontrado.");
-                   if (authStatus) authStatus.innerText = 'Error: Área de impresión no encontrada.';
-              }
+        if (authStatus) authStatus.innerText = 'Preparando impresión...';
+        const printArea = document.getElementById('print-area');
+        if (printArea) {
+            printArea.innerHTML = buildPrintableHtml({ ...quoteRecord, companySettings: companySettings });
+            setTimeout(() => {
+                window.print();
+                if (authStatus) authStatus.innerText = 'Cotización generada y guardada.';
+            }, 500);
         } else {
-             if (authStatus) authStatus.innerText = 'Cotización generada y guardada.';
-         }
+            console.error("Elemento 'print-area' no encontrado.");
+            if (authStatus) authStatus.innerText = 'Cotización generada y guardada.';
+        }
 
         // Limpiar formulario para la siguiente cotización
         updateQuoteNumberPreview(); // Actualizar número de previsualización
@@ -1457,10 +1446,8 @@ async function generatePrintableQuote(saveToDrive = false) {
         showAlert(`Error al generar/guardar la cotización: ${errorMsg}\nRevisa la consola.`, "Error al Guardar"); // REEMPLAZO
          if (authStatus) authStatus.innerText = 'Error al generar/guardar.';
     } finally {
-         // Rehabilitar botones
-         if(printButton) printButton.disabled = false;
-         if(driveButton) driveButton.disabled = false;
-     }
+        if (generateBtn) generateBtn.disabled = false;
+    }
 }
 
 // --- FUNCIÓN PARA CREAR/ACTUALIZAR GOOGLE DOCS ---

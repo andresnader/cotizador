@@ -94,11 +94,8 @@
                             <div class="flex justify-between items-center text-2xl font-bold"><span id="total-label" class="text-indigo-600">TOTAL:</span><span id="total" class="text-indigo-600">$0.00</span></div>
                         </div>
                         <div class="mt-8">
-                            <button onclick="generatePrintableQuote(false)" class="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition duration-300 shadow-lg text-lg font-semibold mb-3">
-                                <i class="fas fa-print mr-2"></i>Generar, Guardar y Imprimir
-                            </button>
-                            <button onclick="generatePrintableQuote(true)" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition duration-300 shadow-lg text-lg font-semibold">
-                                <i class="fab fa-google-drive mr-2"></i>Generar y Guardar en Drive
+                            <button id="generate-quote-btn" onclick="generatePrintableQuote()" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition duration-300 shadow-lg text-lg font-semibold">
+                                <i class="fas fa-file-circle-plus mr-2"></i>Generar y Guardar Cotización
                             </button>
                         </div>
                     </div>

@@ -37,6 +37,10 @@ const CONTRACTS_DRIVE_FOLDER_ID = '1doqaU7jvk5dGH1TTAJfniGU9boZn5JrB';
 // Carpeta donde se almacenarán las cotizaciones (Docs y PDFs)
 const QUOTES_DRIVE_FOLDER_ID = '1mTsrPMrcLzSDapMs4m3fG_d5Q8EguEoX';
 
+// URLs de librerías externas utilizadas para generar PDFs
+const HTML2CANVAS_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+const JSPDF_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+
 
 let tokenClient;
 // let gapiInited = false; // Ya no se usan como flags globales simples
@@ -159,15 +163,99 @@ function formatMultilineText(value) {
     return escapeHtml(value).replace(/\r?\n/g, '<br>');
 }
 
-function ensurePdfLibrariesAvailable() {
-    if (typeof html2canvas !== 'function') {
-        throw new Error('La librería html2canvas no está disponible.');
+const externalScriptPromises = new Map();
+let pdfLibrariesPromise = null;
+
+function resolveHtml2canvasFunction() {
+    if (typeof window.html2canvas === 'function') {
+        return window.html2canvas;
     }
-    const jsPdfNamespace = window.jspdf;
-    if (!jsPdfNamespace || typeof jsPdfNamespace.jsPDF !== 'function') {
-        throw new Error('La librería jsPDF no está disponible.');
+    if (window.html2canvas && typeof window.html2canvas.default === 'function') {
+        window.html2canvas = window.html2canvas.default;
+        return window.html2canvas;
     }
-    return jsPdfNamespace.jsPDF;
+    return null;
+}
+
+function resolveJsPdfConstructor() {
+    if (window.jspdf && typeof window.jspdf.jsPDF === 'function') {
+        return window.jspdf.jsPDF;
+    }
+    return null;
+}
+
+function loadExternalScriptOnce(src) {
+    if (!src) return Promise.resolve();
+    if (externalScriptPromises.has(src)) {
+        return externalScriptPromises.get(src);
+    }
+
+    const promise = new Promise((resolve, reject) => {
+        const existingScript = Array.from(document.getElementsByTagName('script')).find(script => script.src === src);
+        if (existingScript && existingScript.dataset.loaded === 'true') {
+            resolve();
+            return;
+        }
+
+        const script = existingScript || document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+            script.dataset.loaded = 'true';
+            resolve();
+        };
+        script.onerror = () => {
+            reject(new Error(`No se pudo cargar el script externo: ${src}`));
+        };
+
+        if (!existingScript) {
+            document.head.appendChild(script);
+        }
+    });
+
+    externalScriptPromises.set(src, promise);
+    promise.catch(() => {
+        externalScriptPromises.delete(src);
+    });
+    return promise;
+}
+
+async function ensurePdfLibrariesAvailable() {
+    if (pdfLibrariesPromise) {
+        return pdfLibrariesPromise;
+    }
+
+    pdfLibrariesPromise = (async () => {
+        let html2canvasFn = resolveHtml2canvasFunction();
+        if (!html2canvasFn) {
+            await loadExternalScriptOnce(HTML2CANVAS_CDN_URL);
+            html2canvasFn = resolveHtml2canvasFunction();
+        }
+
+        let jsPDFConstructor = resolveJsPdfConstructor();
+        if (!jsPDFConstructor) {
+            await loadExternalScriptOnce(JSPDF_CDN_URL);
+            jsPDFConstructor = resolveJsPdfConstructor();
+        }
+
+        if (typeof html2canvasFn !== 'function') {
+            throw new Error('La librería html2canvas no está disponible.');
+        }
+        if (typeof jsPDFConstructor !== 'function') {
+            throw new Error('La librería jsPDF no está disponible.');
+        }
+
+        return { html2canvasFn, jsPDFConstructor };
+    })();
+
+    try {
+        const libraries = await pdfLibrariesPromise;
+        return libraries;
+    } catch (error) {
+        pdfLibrariesPromise = null;
+        throw error;
+    }
 }
 
 async function waitForImagesToLoad(container) {
@@ -182,8 +270,8 @@ async function waitForImagesToLoad(container) {
     }));
 }
 
-async function generateQuotePdfBlob(quoteRecord) {
-    const jsPDFConstructor = ensurePdfLibrariesAvailable();
+async function generateQuotePdfBlob(quoteRecord, pdfLibraries) {
+    const { html2canvasFn, jsPDFConstructor } = pdfLibraries || await ensurePdfLibrariesAvailable();
     const printArea = document.getElementById('print-area');
     if (!printArea) {
         throw new Error('No se encontró el contenedor de impresión para generar el PDF.');
@@ -197,7 +285,7 @@ async function generateQuotePdfBlob(quoteRecord) {
         printArea.innerHTML = buildPrintableHtml({ ...quoteRecord, companySettings: settingsForPdf });
         await waitForImagesToLoad(printArea);
 
-        const canvas = await html2canvas(printArea, {
+        const canvas = await html2canvasFn(printArea, {
             scale: 2,
             useCORS: true,
             backgroundColor: '#ffffff'
@@ -1423,11 +1511,12 @@ async function generatePrintableQuote() {
 
     const generateBtn = document.getElementById('generate-quote-btn');
     if (generateBtn) generateBtn.disabled = true;
-    if (authStatus) authStatus.innerText = 'Generando PDF de la cotización...';
+    if (authStatus) authStatus.innerText = 'Preparando librerías de PDF...';
 
     try {
-        ensurePdfLibrariesAvailable();
-        const pdfBlob = await generateQuotePdfBlob(quoteRecord);
+        const pdfLibraries = await ensurePdfLibrariesAvailable();
+        if (authStatus) authStatus.innerText = 'Generando PDF de la cotización...';
+        const pdfBlob = await generateQuotePdfBlob(quoteRecord, pdfLibraries);
 
         if (authStatus) authStatus.innerText = 'Guardando PDF en Google Drive...';
         const pdfFileName = `Cotizacion-${quoteRecord.number}.pdf`;

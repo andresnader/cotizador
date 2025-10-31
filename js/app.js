@@ -288,6 +288,20 @@ async function trashDriveFile(fileId) {
 
 
 // --- FUNCIÓN PARA ASIGNAR ELEMENTOS DEL DOM ---
+function showLoginOverlay() {
+    if (!loginOverlay) return;
+    loginOverlay.classList.remove('d-none');
+    loginOverlay.classList.add('d-flex');
+    loginOverlay.style.display = 'flex';
+}
+
+function hideLoginOverlay() {
+    if (!loginOverlay) return;
+    loginOverlay.classList.remove('d-flex');
+    loginOverlay.classList.add('d-none');
+    loginOverlay.style.display = 'none';
+}
+
 function assignDOMElements() {
     // ... (asignaciones iguales que antes)...
     loginOverlay = document.getElementById('login-overlay');
@@ -475,7 +489,7 @@ function handleSignoutClick() {
             gapi.client.setToken(null); // Limpiar token de GAPI
             // Ocultar app, mostrar login
             if (appContainer) appContainer.style.display = 'none';
-            if (loginOverlay) loginOverlay.style.display = 'flex';
+            showLoginOverlay();
             // Limpiar email
             const userEmailEl = document.getElementById('user-email');
             if (userEmailEl) userEmailEl.innerText = '';
@@ -488,7 +502,7 @@ function handleSignoutClick() {
          console.warn("handleSignoutClick: No hay token para revocar o GAPI no listo.");
          // Aún así, forzar el estado de cierre de sesión visualmente
          if (appContainer) appContainer.style.display = 'none';
-         if (loginOverlay) loginOverlay.style.display = 'flex';
+         showLoginOverlay();
          const userEmailEl = document.getElementById('user-email');
          if (userEmailEl) userEmailEl.innerText = '';
          clearAppData();
@@ -552,7 +566,7 @@ async function tokenCallback(tokenResponse) {
     }
 
     // Ocultar login, mostrar app
-    if (loginOverlay) loginOverlay.style.display = 'none';
+    hideLoginOverlay();
     if (appContainer) appContainer.style.display = 'block';
     if (loadingSpinner) loadingSpinner.style.display = 'none'; // Ocultar spinner
 

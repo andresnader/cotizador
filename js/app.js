@@ -32,7 +32,9 @@ const QUOTES_SHEET_RANGE = 'Hoja 1!A2:K'; // Asume A=ID, B=Numero, C=Fecha Emisi
 // ID de tu Plantilla de Contrato en Google Docs
 const CONTRACT_TEMPLATE_ID = '1MNE19Ymp40dTZ4Ulv31An3EWVRc8SW-ktD2H-dOFSa4';
 
-// Carpeta donde se almacenarán los documentos y PDFs generados
+// Carpeta donde se almacenarán los contratos generados
+const CONTRACTS_DRIVE_FOLDER_ID = '1doqaU7jvk5dGH1TTAJfniGU9boZn5JrB';
+// Carpeta donde se almacenarán las cotizaciones (Docs y PDFs)
 const QUOTES_DRIVE_FOLDER_ID = '1mTsrPMrcLzSDapMs4m3fG_d5Q8EguEoX';
 
 
@@ -142,10 +144,10 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
-async function savePdfToDriveFromDoc(docId, pdfName) {
+async function savePdfToDriveFromDoc(docId, pdfName, targetFolderId = QUOTES_DRIVE_FOLDER_ID) {
     if (!docId) return null;
-    if (!QUOTES_DRIVE_FOLDER_ID) {
-        console.warn('QUOTES_DRIVE_FOLDER_ID no está configurado. Se omitirá el guardado del PDF.');
+    if (!targetFolderId) {
+        console.warn('No se proporcionó carpeta destino para guardar el PDF. Se omitirá el guardado.');
         return null;
     }
 
@@ -178,7 +180,7 @@ async function savePdfToDriveFromDoc(docId, pdfName) {
     const metadata = {
         name: pdfName,
         mimeType: 'application/pdf',
-        parents: [QUOTES_DRIVE_FOLDER_ID]
+        parents: [targetFolderId]
     };
 
     const boundary = '-------314159265358979323846';
@@ -1220,8 +1222,8 @@ async function handleSaveContractClick() {
             fileId: CONTRACT_TEMPLATE_ID,
             resource: { name: docTitle }
         };
-        if (QUOTES_DRIVE_FOLDER_ID) {
-            copyPayload.resource.parents = [QUOTES_DRIVE_FOLDER_ID];
+        if (CONTRACTS_DRIVE_FOLDER_ID) {
+            copyPayload.resource.parents = [CONTRACTS_DRIVE_FOLDER_ID];
         }
         const copyResponse = await gapi.client.drive.files.copy(copyPayload);
         const newDocId = copyResponse.result.id;
@@ -1513,7 +1515,7 @@ async function createQuoteAsGoogleDoc(quoteData) {
 
         let newPdfId = null;
         try {
-            newPdfId = await savePdfToDriveFromDoc(newDocId, `${docTitle}.pdf`);
+            newPdfId = await savePdfToDriveFromDoc(newDocId, `${docTitle}.pdf`, QUOTES_DRIVE_FOLDER_ID);
             if (newPdfId) {
                 console.log('PDF generado y guardado en Drive con ID:', newPdfId);
             }

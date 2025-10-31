@@ -192,26 +192,37 @@ function loadExternalScriptOnce(src) {
 
     const promise = new Promise((resolve, reject) => {
         const existingScript = Array.from(document.getElementsByTagName('script')).find(script => script.src === src);
-        if (existingScript && existingScript.dataset.loaded === 'true') {
-            resolve();
-            return;
-        }
 
-        const script = existingScript || document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-            script.dataset.loaded = 'true';
+        const markAsLoaded = (scriptEl) => {
+            if (scriptEl) {
+                scriptEl.dataset.loaded = 'true';
+            }
             resolve();
         };
-        script.onerror = () => {
+
+        const handleError = () => {
             reject(new Error(`No se pudo cargar el script externo: ${src}`));
         };
 
-        if (!existingScript) {
-            document.head.appendChild(script);
+        if (existingScript) {
+            const readyState = existingScript.readyState;
+            if (existingScript.dataset.loaded === 'true' || readyState === 'complete' || readyState === 'loaded') {
+                markAsLoaded(existingScript);
+                return;
+            }
+
+            existingScript.addEventListener('load', () => markAsLoaded(existingScript), { once: true });
+            existingScript.addEventListener('error', handleError, { once: true });
+            return;
         }
+
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.defer = true;
+        script.addEventListener('load', () => markAsLoaded(script), { once: true });
+        script.addEventListener('error', handleError, { once: true });
+        document.head.appendChild(script);
     });
 
     externalScriptPromises.set(src, promise);
@@ -2323,6 +2334,10 @@ document.addEventListener('DOMContentLoaded', () => {
      console.log("DOM listo. Asignando elementos y iniciando carga de APIs...");
      assignDOMElements(); // Asigna las variables de elementos del DOM
      initModal(); // Inicializa los elementos del modal
+     // Pre-cargar las librerías de PDF en segundo plano para evitar bloqueos al generar la primera cotización
+     ensurePdfLibrariesAvailable().catch(err => {
+         console.warn('No se pudieron preparar las librerías de PDF durante la inicialización:', err);
+     });
      initializeApp().catch(err => { // Iniciar carga de GAPI/GIS
          console.error("Fallo la inicialización general de la app:", err);
          if(authStatus) authStatus.innerText = "Error crítico al inicializar. Recarga la página.";

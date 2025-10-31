@@ -39,13 +39,13 @@
         </header>
 
         <div class="nav nav-pills flex-wrap gap-2 mb-4" role="tablist">
-            <button class="btn btn-outline-primary tab-button active" onclick="changeTab(event, 'cotizador')" type="button"><i class="fas fa-file-invoice-dollar me-2"></i>Cotizador</button>
-            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'historial')" type="button"><i class="fas fa-history me-2"></i>Historial</button>
-            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'contratos')" type="button"><i class="fas fa-file-signature me-2"></i>Contratos</button>
-            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'portal')" type="button"><i class="fas fa-user-check me-2"></i>Portal Cliente</button>
-            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'clientes')" type="button"><i class="fas fa-users me-2"></i>Clientes</button>
-            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'servicios')" type="button"><i class="fas fa-concierge-bell me-2"></i>Servicios</button>
-            <button class="btn btn-outline-primary tab-button" onclick="changeTab(event, 'configuracion')" type="button"><i class="fas fa-cog me-2"></i>Configuración</button>
+            <button class="btn btn-outline-primary tab-button active" data-tab-target="cotizador" onclick="changeTab(event, 'cotizador')" type="button"><i class="fas fa-file-invoice-dollar me-2"></i>Cotizador</button>
+            <button class="btn btn-outline-primary tab-button" data-tab-target="historial" onclick="changeTab(event, 'historial')" type="button"><i class="fas fa-history me-2"></i>Historial</button>
+            <button class="btn btn-outline-primary tab-button" data-tab-target="contratos" onclick="changeTab(event, 'contratos')" type="button"><i class="fas fa-file-signature me-2"></i>Contratos</button>
+            <button class="btn btn-outline-primary tab-button" data-tab-target="portal" onclick="changeTab(event, 'portal')" type="button"><i class="fas fa-user-check me-2"></i>Portal Cliente</button>
+            <button class="btn btn-outline-primary tab-button" data-tab-target="clientes" onclick="changeTab(event, 'clientes')" type="button"><i class="fas fa-users me-2"></i>Clientes</button>
+            <button class="btn btn-outline-primary tab-button" data-tab-target="servicios" onclick="changeTab(event, 'servicios')" type="button"><i class="fas fa-concierge-bell me-2"></i>Servicios</button>
+            <button class="btn btn-outline-primary tab-button" data-tab-target="configuracion" onclick="changeTab(event, 'configuracion')" type="button"><i class="fas fa-cog me-2"></i>Configuración</button>
         </div>
 
         <main>

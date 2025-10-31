@@ -33,6 +33,16 @@ body {
     display: block;
 }
 
+.btn.is-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.85;
+}
+
+.btn.is-loading .spinner-border {
+    vertical-align: text-bottom;
+}
+
 .table-responsive {
     border-radius: 0.75rem;
 }

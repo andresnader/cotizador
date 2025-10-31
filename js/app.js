@@ -1458,6 +1458,28 @@ async function handleSaveContractClick() {
 
 
 // --- LÓGICA DE GENERACIÓN Y GUARDADO DE COTIZACIÓN ---
+function setGenerateQuoteButtonLoading(isLoading, labelWhenLoading = 'Generando...') {
+    const button = document.getElementById('generate-quote-btn');
+    if (!button) return;
+
+    if (isLoading) {
+        if (!button.dataset.originalHtml) {
+            button.dataset.originalHtml = button.innerHTML;
+        }
+        button.disabled = true;
+        button.classList.add('is-loading');
+        const loadingLabel = labelWhenLoading || 'Generando...';
+        button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${loadingLabel}`;
+    } else {
+        button.disabled = false;
+        button.classList.remove('is-loading');
+        if (button.dataset.originalHtml) {
+            button.innerHTML = button.dataset.originalHtml;
+            delete button.dataset.originalHtml;
+        }
+    }
+}
+
 async function generatePrintableQuote() {
     let configOk = true;
     if (!QUOTES_SHEET_ID || QUOTES_SHEET_ID === 'ID_DE_TU_HOJA_DE_COTIZACIONES') {
@@ -1509,15 +1531,16 @@ async function generatePrintableQuote() {
     };
     quoteRecord.companySettingsForPrint = { ...companySettings };
 
-    const generateBtn = document.getElementById('generate-quote-btn');
-    if (generateBtn) generateBtn.disabled = true;
+    setGenerateQuoteButtonLoading(true, 'Preparando librerías...');
     if (authStatus) authStatus.innerText = 'Preparando librerías de PDF...';
 
     try {
         const pdfLibraries = await ensurePdfLibrariesAvailable();
+        setGenerateQuoteButtonLoading(true, 'Generando PDF...');
         if (authStatus) authStatus.innerText = 'Generando PDF de la cotización...';
         const pdfBlob = await generateQuotePdfBlob(quoteRecord, pdfLibraries);
 
+        setGenerateQuoteButtonLoading(true, 'Guardando en Google Drive...');
         if (authStatus) authStatus.innerText = 'Guardando PDF en Google Drive...';
         const pdfFileName = `Cotizacion-${quoteRecord.number}.pdf`;
         const pdfIdFromDrive = await uploadPdfBlobToDrive(pdfBlob, pdfFileName, QUOTES_DRIVE_FOLDER_ID);
@@ -1541,6 +1564,7 @@ async function generatePrintableQuote() {
             quoteRecord.googlePdfId || ''
         ];
 
+        setGenerateQuoteButtonLoading(true, 'Registrando en Google Sheets...');
         if (authStatus) authStatus.innerText = 'Guardando registro en Google Sheets...';
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: QUOTES_SHEET_ID,
@@ -1574,26 +1598,32 @@ async function generatePrintableQuote() {
         showAlert(`Error al generar/guardar la cotización: ${errorMsg}\nRevisa la consola.`, 'Error al Guardar');
         if (authStatus) authStatus.innerText = 'Error al generar/guardar.';
     } finally {
-        if (generateBtn) generateBtn.disabled = false;
+        setGenerateQuoteButtonLoading(false);
     }
 }
 
 // --- LÓGICA DE PESTAÑAS ---
 function changeTab(event, tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    const tabElement = document.getElementById(tabName);
-     if (tabElement) tabElement.classList.add('active');
-     // Asegurarse de que event.currentTarget exista
-     if (event && event.currentTarget) {
-         event.currentTarget.classList.add('active');
-      } else {
-           // Fallback si el evento no está bien formado (ej, llamado programáticamente sin evento)
-           const currentButton = document.querySelector(`.tab-button[onclick*="'${tabName}'"]`);
-           if (currentButton) currentButton.classList.add('active');
-       }
+    const panels = document.querySelectorAll('.tab-content');
+    panels.forEach(panel => panel?.classList?.remove('active'));
 
-    // Llamar a funciones de renderizado específicas de la pestaña
+    const buttons = document.querySelectorAll('.tab-button');
+    buttons.forEach(button => button?.classList?.remove('active'));
+
+    const tabElement = document.getElementById(tabName);
+    if (tabElement?.classList) {
+        tabElement.classList.add('active');
+    }
+
+    let triggerButton = event?.currentTarget;
+    if (!triggerButton || !triggerButton.classList) {
+        triggerButton = document.querySelector(`.tab-button[data-tab-target="${tabName}"]`) ||
+            document.querySelector(`.tab-button[onclick*="'${tabName}'"]`);
+    }
+    if (triggerButton?.classList) {
+        triggerButton.classList.add('active');
+    }
+
     if (tabName === 'contratos') renderContractsPage();
     if (tabName === 'portal') renderClientPortalPage();
 }

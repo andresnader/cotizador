@@ -37,6 +37,11 @@ const CONTRACTS_DRIVE_FOLDER_ID = '1doqaU7jvk5dGH1TTAJfniGU9boZn5JrB';
 // Carpeta donde se almacenarán las cotizaciones (Docs y PDFs)
 const QUOTES_DRIVE_FOLDER_ID = '1mTsrPMrcLzSDapMs4m3fG_d5Q8EguEoX';
 
+// Hoja donde se almacenará la configuración personalizada por usuario
+const COMPANY_CONFIG_SHEET_ID = 'ID_DE_TU_HOJA_DE_CONFIGURACION';
+const COMPANY_CONFIG_SHEET_TAB = 'Configuracion';
+const COMPANY_CONFIG_SHEET_RANGE = `${COMPANY_CONFIG_SHEET_TAB}!A2:C`;
+
 // URLs de librerías externas utilizadas para generar PDFs
 const HTML2CANVAS_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
 const JSPDF_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -55,6 +60,9 @@ let quoteClientSelect, quoteRUCInput, serviceSelect, servicePriceOverrideInput, 
 let configForm, companyNameInput, companyAddressInput, companyContactInput, companyWebsiteInput, companyWhatsappInput, logoUploadInput, logoPreview, primaryColorInput, accentColorInput;
 let contractClientSelect, contractQuoteSelect, contractText, saveContractBtn;
 let portalClientSelect, clientPortalContent;
+let remoteConfigStatus, remoteConfigMeta, loadCloudConfigBtn, saveCloudConfigBtn, autoSyncCloudToggle;
+
+let signedInUser = null;
 
 // --- INICIO: LÓGICA DE MODAL PERSONALIZADO ---
 let modalOverlay, modalTitle, modalBody, modalBtnConfirm, modalBtnCancel;
@@ -446,6 +454,11 @@ function assignDOMElements() {
     logoPreview = document.getElementById('logoPreview');
     primaryColorInput = document.getElementById('primaryColor');
     accentColorInput = document.getElementById('accentColor');
+    remoteConfigStatus = document.getElementById('remote-config-status');
+    remoteConfigMeta = document.getElementById('remote-config-meta');
+    loadCloudConfigBtn = document.getElementById('load-cloud-config-btn');
+    saveCloudConfigBtn = document.getElementById('save-cloud-config-btn');
+    autoSyncCloudToggle = document.getElementById('autoSyncCloud');
 
     contractClientSelect = document.getElementById('contract-client-select');
     contractQuoteSelect = document.getElementById('contract-quote-select');
@@ -469,8 +482,15 @@ function assignDOMElements() {
     if (contractClientSelect) contractClientSelect.addEventListener('change', handleContractClientChange);
     if (contractQuoteSelect) contractQuoteSelect.addEventListener('change', handleContractQuoteChange);
     if (portalClientSelect) portalClientSelect.addEventListener('change', handlePortalClientChange);
+    if (autoSyncCloudToggle) {
+        autoSyncCloudToggle.checked = autoSyncCloud;
+        autoSyncCloudToggle.addEventListener('change', handleAutoSyncToggleChange);
+    }
+    if (saveCloudConfigBtn) saveCloudConfigBtn.addEventListener('click', handleManualCloudSave);
+    if (loadCloudConfigBtn) loadCloudConfigBtn.addEventListener('click', handleManualCloudLoad);
 
     syncServicePriceOverrideField();
+    initializeRemoteConfigPanel();
 }
 
 // --- 2. LÓGICA DE AUTENTICACIÓN (AUTH) - REESTRUCTURADA ---
@@ -594,20 +614,24 @@ function handleSignoutClick() {
             if (userEmailEl) userEmailEl.innerText = '';
             // Limpiar datos de la aplicación
             clearAppData();
-             if (authStatus) authStatus.innerText = 'Sesión cerrada. Listo para iniciar sesión.';
-             if (loginButton) loginButton.disabled = false; // Asegurarse que el botón esté habilitado
+            signedInUser = null;
+            resetRemoteConfigState();
+            if (authStatus) authStatus.innerText = 'Sesión cerrada. Listo para iniciar sesión.';
+            if (loginButton) loginButton.disabled = false; // Asegurarse que el botón esté habilitado
         });
     } else {
          console.warn("handleSignoutClick: No hay token para revocar o GAPI no listo.");
          // Aún así, forzar el estado de cierre de sesión visualmente
          if (appContainer) appContainer.style.display = 'none';
          showLoginOverlay();
-         const userEmailEl = document.getElementById('user-email');
-         if (userEmailEl) userEmailEl.innerText = '';
-         clearAppData();
-         if (authStatus) authStatus.innerText = 'Listo para iniciar sesión.';
-         if (loginButton) loginButton.disabled = false;
-     }
+        const userEmailEl = document.getElementById('user-email');
+        if (userEmailEl) userEmailEl.innerText = '';
+        clearAppData();
+        signedInUser = null;
+        resetRemoteConfigState();
+        if (authStatus) authStatus.innerText = 'Listo para iniciar sesión.';
+        if (loginButton) loginButton.disabled = false;
+    }
 }
 
 // Función para limpiar datos al cerrar sesión
@@ -645,6 +669,8 @@ async function tokenCallback(tokenResponse) {
 
     if (authStatus) authStatus.innerText = 'Autenticado. Obteniendo info de usuario...';
 
+    signedInUser = { email: '', name: '' };
+
     // Obtener info del usuario (opcional pero útil)
     try {
         const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -655,14 +681,20 @@ async function tokenCallback(tokenResponse) {
          }
         const userData = await userInfoResponse.json();
         console.log("Información del usuario:", userData);
+        signedInUser = {
+            email: userData.email || '',
+            name: userData.name || userData.given_name || userData.family_name || ''
+        };
         const userEmailEl = document.getElementById('user-email');
          if (userEmailEl) userEmailEl.innerText = userData.email || 'Usuario';
     } catch (err) {
         console.warn("No se pudo obtener info del usuario:", err);
          const userEmailEl = document.getElementById('user-email');
          // Poner un placeholder si falla
-         if (userEmailEl) userEmailEl.innerText = 'Usuario (email no disponible)'; 
+         if (userEmailEl) userEmailEl.innerText = 'Usuario (email no disponible)';
     }
+
+    refreshRemoteConfigUiState();
 
     // Ocultar login, mostrar app
     hideLoginOverlay();
@@ -694,16 +726,36 @@ function checkSheetConfig() {
 
 // Constantes y Estado de la Aplicación
 const IVA_RATE = 0.15;
-let clients = []; 
-let services = []; 
-let quotesHistory = []; 
+const DEFAULT_COMPANY_SETTINGS = {
+    name: 'Tu Empresa S.A.',
+    address: 'Tu Dirección, Guayaquil',
+    contact: 'tuemail@empresa.com',
+    logo: 'https://placehold.co/200x100/eef2ff/4f46e5?text=Tu+Logo',
+    primaryColor: '#1a202c',
+    accentColor: '#4f46e5',
+    website: '',
+    whatsapp: ''
+};
+
+let clients = [];
+let services = [];
+let quotesHistory = [];
 let contracts = []; // Podría usarse para cachear contratos cargados
 let quoteItemsData = [];
-let quoteCounter = 1; 
+let quoteCounter = 1;
 
-let companySettings = JSON.parse(localStorage.getItem('companySettings')) || {
-    name: 'Tu Empresa S.A.', address: 'Tu Dirección, Guayaquil', contact: 'tuemail@empresa.com', logo: 'https://placehold.co/200x100/eef2ff/4f46e5?text=Tu+Logo', primaryColor: '#1a202c', accentColor: '#4f46e5', website: '', whatsapp: ''
-};
+let autoSyncCloud = false;
+try {
+    autoSyncCloud = localStorage.getItem('companySettingsAutoSyncCloud') === 'true';
+} catch (error) {
+    console.warn('No se pudo leer la preferencia de sincronización automática:', error);
+}
+
+let companySettings = readCompanySettingsFromLocalStorage();
+let companySettingsRowIndex = null;
+let remoteConfigLastLoadedAt = null;
+let remoteConfigLastSavedAt = null;
+let remoteConfigBusy = false;
 
 // Función principal de inicialización de datos (llamada después del login)
 async function initializeDataFromGoogle() {
@@ -730,6 +782,8 @@ async function initializeDataFromGoogle() {
     renderQuoteItems(); // Renderiza la tabla de items (vacía inicialmente)
     updateQuoteNumberPreview(); // Calcula el número de cotización
     loadSettings(); // Carga config. local (nombre empresa, logo, etc.)
+    refreshRemoteConfigUiState();
+    await loadCompanySettingsFromCloud({ silent: true });
     renderQuotesHistory(); // Renderiza la tabla de historial
 
     // Asegurar que la primera pestaña esté activa visualmente
@@ -1898,100 +1952,499 @@ function calculateTotals() {
 }
 
 
-// --- LÓGICA DE CONFIGURACIÓN (localStorage) ---
+// --- LÓGICA DE CONFIGURACIÓN (local y nube) ---
 function loadSettings() {
-     // Chequeos de elementos
-     if (!companyNameInput || !companyAddressInput || !companyContactInput || !companyWebsiteInput || !companyWhatsappInput || !logoPreview || !primaryColorInput || !accentColorInput) {
-         console.warn("Faltan elementos del formulario de configuración.");
-         return;
-      }
-     // Usar valores por defecto si no existen en companySettings
-    companyNameInput.value = companySettings.name || 'Tu Empresa S.A.';
-    companyAddressInput.value = companySettings.address || 'Tu Dirección, Guayaquil';
-    companyContactInput.value = companySettings.contact || 'tuemail@empresa.com';
-    companyWebsiteInput.value = companySettings.website || '';
-    companyWhatsappInput.value = companySettings.whatsapp || '';
-    logoPreview.src = companySettings.logo || 'https://placehold.co/200x100/eef2ff/4f46e5?text=Tu+Logo';
-    primaryColorInput.value = companySettings.primaryColor || '#1a202c';
-    accentColorInput.value = companySettings.accentColor || '#4f46e5';
+    if (!companyNameInput || !companyAddressInput || !companyContactInput || !companyWebsiteInput || !companyWhatsappInput || !logoPreview || !primaryColorInput || !accentColorInput) {
+        console.warn("Faltan elementos del formulario de configuración.");
+        return;
+    }
 
-    // Aplicar color de acento a elementos relevantes
-    applyAccentColor(); 
+    companySettings = { ...DEFAULT_COMPANY_SETTINGS, ...companySettings };
+
+    companyNameInput.value = companySettings.name || DEFAULT_COMPANY_SETTINGS.name;
+    companyAddressInput.value = companySettings.address || DEFAULT_COMPANY_SETTINGS.address;
+    companyContactInput.value = companySettings.contact || DEFAULT_COMPANY_SETTINGS.contact;
+    companyWebsiteInput.value = companySettings.website || DEFAULT_COMPANY_SETTINGS.website;
+    companyWhatsappInput.value = companySettings.whatsapp || DEFAULT_COMPANY_SETTINGS.whatsapp;
+    logoPreview.src = companySettings.logo || DEFAULT_COMPANY_SETTINGS.logo;
+    primaryColorInput.value = companySettings.primaryColor || DEFAULT_COMPANY_SETTINGS.primaryColor;
+    accentColorInput.value = companySettings.accentColor || DEFAULT_COMPANY_SETTINGS.accentColor;
+
+    if (autoSyncCloudToggle) autoSyncCloudToggle.checked = autoSyncCloud;
+
+    applyAccentColor();
+    updateRemoteConfigMeta();
 }
 
- // Función para aplicar el color de acento
- function applyAccentColor() {
-     const accentColor = companySettings.accentColor || '#4f46e5';
-     const totalLabelEl = document.getElementById('total-label');
-     const totalEl = document.getElementById('total');
-     if (totalLabelEl) totalLabelEl.style.color = accentColor;
-     if (totalEl) totalEl.style.color = accentColor;
- }
+function applyAccentColor() {
+    const accentColor = companySettings.accentColor || DEFAULT_COMPANY_SETTINGS.accentColor;
+    const totalLabelEl = document.getElementById('total-label');
+    const totalEl = document.getElementById('total');
+    if (totalLabelEl) totalLabelEl.style.color = accentColor;
+    if (totalEl) totalEl.style.color = accentColor;
+}
 
-// Manejador para cambio de logo
+function persistCompanySettingsLocally() {
+    try {
+        localStorage.setItem('companySettings', JSON.stringify(companySettings));
+        return true;
+    } catch (error) {
+        console.error('Error guardando configuración en localStorage:', error);
+        return false;
+    }
+}
+
+function updateCompanySettingsFromForm() {
+    if (!companyNameInput || !companyAddressInput || !companyContactInput || !companyWebsiteInput || !companyWhatsappInput || !primaryColorInput || !accentColorInput) {
+        showAlert('Error: Faltan elementos del formulario de configuración para guardar.', 'Error de Formulario');
+        return false;
+    }
+
+    companySettings = {
+        ...DEFAULT_COMPANY_SETTINGS,
+        ...companySettings,
+        name: companyNameInput.value.trim(),
+        address: companyAddressInput.value.trim(),
+        contact: companyContactInput.value.trim(),
+        website: companyWebsiteInput.value.trim(),
+        whatsapp: companyWhatsappInput.value.trim(),
+        primaryColor: primaryColorInput.value,
+        accentColor: accentColorInput.value
+    };
+
+    if (!persistCompanySettingsLocally()) {
+        showAlert('Hubo un error al guardar la configuración local.');
+        return false;
+    }
+
+    loadSettings();
+    return true;
+}
+
 function handleLogoUploadChange(e) {
-     if (!logoPreview) return;
-     if (!e.target.files || e.target.files.length === 0) return; // Chequear si hay archivos
-    const file = e.target.files[0];
+    if (!logoPreview) return;
+    if (!e.target.files || e.target.files.length === 0) return;
 
-    // Validaciones
-     if (!file.type.startsWith('image/')) {
-         showAlert("Por favor, selecciona un archivo de imagen válido."); // REEMPLAZO
-         e.target.value = ''; // Limpiar input
-         return;
-     }
-     if (file.size > 2 * 1024 * 1024) { // Límite de 2MB
-         showAlert("El archivo es muy grande (máx 2MB)."); // REEMPLAZO
-         e.target.value = ''; // Limpiar input
-         return;
-      }
+    const file = e.target.files[0];
+    if (!file.type.startsWith('image/')) {
+        showAlert('Por favor, selecciona un archivo de imagen válido.');
+        e.target.value = '';
+        return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+        showAlert('El archivo es muy grande (máx 2MB).');
+        e.target.value = '';
+        return;
+    }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
         const logoBase64 = event.target.result;
-        logoPreview.src = logoBase64; // Mostrar preview
-        companySettings.logo = logoBase64; // Guardar en objeto
-        try {
-            localStorage.setItem('companySettings', JSON.stringify(companySettings)); // Guardar en localStorage
-            console.log("Logo guardado en localStorage.");
-        } catch (error) {
-            console.error("Error guardando logo en localStorage:", error);
-            showAlert("Hubo un error al guardar el logo. El almacenamiento local podría estar lleno."); // REEMPLAZO
+        logoPreview.src = logoBase64;
+        companySettings = { ...DEFAULT_COMPANY_SETTINGS, ...companySettings, logo: logoBase64 };
+
+        if (!persistCompanySettingsLocally()) {
+            showAlert('Hubo un error al guardar el logo. El almacenamiento local podría estar lleno.');
+            return;
+        }
+
+        console.log('Logo guardado en localStorage.');
+        updateRemoteConfigMeta();
+
+        if (autoSyncCloud) {
+            const synced = await saveCompanySettingsToCloud({ silent: true });
+            if (!synced) {
+                console.warn('No se pudo sincronizar el logo con la nube de inmediato.');
+            }
+        } else {
+            refreshRemoteConfigUiState();
         }
     };
-     reader.onerror = (error) => {
-         console.error("Error leyendo archivo de logo:", error);
-         showAlert("Error al leer el archivo de logo seleccionado."); // REEMPLAZO
-         e.target.value = ''; // Limpiar input
-     };
+    reader.onerror = (error) => {
+        console.error('Error leyendo archivo de logo:', error);
+        showAlert('Error al leer el archivo de logo seleccionado.');
+        e.target.value = '';
+    };
     reader.readAsDataURL(file);
 }
 
-// Manejador para guardar configuración
-function handleConfigFormSubmit(e) {
-     e.preventDefault();
-     // Chequeos de elementos
-     if (!companyNameInput || !companyAddressInput || !companyContactInput || !companyWebsiteInput || !companyWhatsappInput || !primaryColorInput || !accentColorInput) {
-         showAlert("Error: Faltan elementos del formulario de configuración para guardar.", "Error de Formulario"); // REEMPLAZO
-         return;
-      }
-    // Actualizar objeto companySettings
-    companySettings.name = companyNameInput.value.trim();
-    companySettings.address = companyAddressInput.value.trim();
-    companySettings.contact = companyContactInput.value.trim();
-    companySettings.website = companyWebsiteInput.value.trim();
-    companySettings.whatsapp = companyWhatsappInput.value.trim();
-    companySettings.primaryColor = primaryColorInput.value;
-    companySettings.accentColor = accentColorInput.value;
-    // Guardar en localStorage
+async function handleConfigFormSubmit(e) {
+    e.preventDefault();
+    const updated = updateCompanySettingsFromForm();
+    if (!updated) return;
+
+    showAlert('Configuración guardada localmente.');
+
+    if (autoSyncCloud) {
+        const synced = await saveCompanySettingsToCloud({ silent: true });
+        if (!synced) {
+            showAlert('Los cambios se guardaron en este dispositivo, pero no se pudieron sincronizar con la nube. Reintenta más tarde.', 'Advertencia');
+        }
+    } else {
+        refreshRemoteConfigUiState();
+    }
+}
+
+async function handleManualCloudSave() {
+    const updated = updateCompanySettingsFromForm();
+    if (!updated) return;
+    await saveCompanySettingsToCloud({ silent: false });
+}
+
+async function handleManualCloudLoad() {
+    await loadCompanySettingsFromCloud({ silent: false });
+}
+
+function handleAutoSyncToggleChange(event) {
+    autoSyncCloud = !!event.target.checked;
     try {
-        localStorage.setItem('companySettings', JSON.stringify(companySettings));
-        loadSettings(); // Recargar y aplicar cambios (ej. color)
-        showAlert('Configuración guardada localmente.'); // REEMPLAZO
+        localStorage.setItem('companySettingsAutoSyncCloud', autoSyncCloud ? 'true' : 'false');
     } catch (error) {
-         console.error("Error guardando configuración en localStorage:", error);
-         showAlert("Hubo un error al guardar la configuración local."); // REEMPLAZO
-     }
+        console.warn('No se pudo guardar la preferencia de sincronización automática:', error);
+    }
+    updateRemoteConfigMeta();
+    if (autoSyncCloud && companySettingsRowIndex) {
+        refreshRemoteConfigUiState();
+    }
+}
+
+function initializeRemoteConfigPanel() {
+    refreshRemoteConfigUiState();
+    updateRemoteConfigMeta();
+}
+
+function getCurrentUserEmail() {
+    const email = signedInUser?.email || '';
+    return typeof email === 'string' ? email.trim() : '';
+}
+
+function isConfigSheetConfigured() {
+    return Boolean(COMPANY_CONFIG_SHEET_ID && COMPANY_CONFIG_SHEET_ID !== 'ID_DE_TU_HOJA_DE_CONFIGURACION');
+}
+
+function updateRemoteConfigButtonsState() {
+    const disable = remoteConfigBusy || !isConfigSheetConfigured() || !getCurrentUserEmail();
+    if (saveCloudConfigBtn) saveCloudConfigBtn.disabled = disable;
+    if (loadCloudConfigBtn) loadCloudConfigBtn.disabled = disable;
+}
+
+function updateRemoteConfigStatus(message, state = 'info', options = {}) {
+    if (!remoteConfigStatus) return;
+    const { isLoading = false } = options;
+    const classMap = {
+        success: 'alert-success',
+        info: 'alert-info',
+        warning: 'alert-warning',
+        danger: 'alert-danger',
+        error: 'alert-danger'
+    };
+    const alertClass = classMap[state] || 'alert-secondary';
+    remoteConfigStatus.className = `alert ${alertClass} mb-3`;
+    if (isLoading) {
+        remoteConfigStatus.innerHTML = `<div class="d-flex align-items-center gap-2"><div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div><span>${escapeHtml(message)}</span></div>`;
+    } else {
+        remoteConfigStatus.innerHTML = `<span>${escapeHtml(message)}</span>`;
+    }
+}
+
+function updateRemoteConfigMeta() {
+    if (!remoteConfigMeta) return;
+    const metaParts = [];
+    if (companySettingsRowIndex) metaParts.push(`Fila remota ${companySettingsRowIndex}`);
+    if (remoteConfigLastLoadedAt instanceof Date && !Number.isNaN(remoteConfigLastLoadedAt.getTime())) {
+        metaParts.push(`Última carga ${remoteConfigLastLoadedAt.toLocaleString()}`);
+    }
+    if (remoteConfigLastSavedAt instanceof Date && !Number.isNaN(remoteConfigLastSavedAt.getTime())) {
+        metaParts.push(`Última sincronización ${remoteConfigLastSavedAt.toLocaleString()}`);
+    }
+    metaParts.push(autoSyncCloud ? 'Sincronización automática activa' : 'Sincronización automática desactivada');
+    remoteConfigMeta.textContent = metaParts.join(' · ');
+}
+
+function setRemoteConfigBusy(isBusy, message) {
+    remoteConfigBusy = isBusy;
+    if (isBusy && message) {
+        updateRemoteConfigStatus(message, 'info', { isLoading: true });
+    }
+    updateRemoteConfigButtonsState();
+}
+
+function refreshRemoteConfigUiState() {
+    updateRemoteConfigButtonsState();
+
+    if (!remoteConfigStatus) return;
+
+    if (!isConfigSheetConfigured()) {
+        updateRemoteConfigStatus('Define COMPANY_CONFIG_SHEET_ID en js/app.js para habilitar la sincronización en la nube.', 'warning');
+        updateRemoteConfigMeta();
+        return;
+    }
+
+    if (!getCurrentUserEmail()) {
+        updateRemoteConfigStatus('Inicia sesión para sincronizar tu configuración con la nube.', 'info');
+        updateRemoteConfigMeta();
+        return;
+    }
+
+    if (remoteConfigBusy) {
+        updateRemoteConfigMeta();
+        return;
+    }
+
+    if (companySettingsRowIndex) {
+        updateRemoteConfigStatus('Configuración conectada a la nube. Guarda para sincronizar cambios.', 'success');
+    } else {
+        updateRemoteConfigStatus('Aún no hay una copia remota para tu cuenta. Guarda para crearla.', 'info');
+    }
+    updateRemoteConfigMeta();
+}
+
+function extractRowIndexFromRange(range) {
+    if (!range) return null;
+    const match = range.match(/([A-Z]+)(\d+)/);
+    if (match && match[2]) return Number(match[2]);
+    const digits = range.match(/\d+/g);
+    if (digits && digits.length > 0) {
+        return Number(digits[digits.length - 1]);
+    }
+    return null;
+}
+
+function readCompanySettingsFromLocalStorage() {
+    try {
+        const raw = localStorage.getItem('companySettings');
+        if (!raw) return { ...DEFAULT_COMPANY_SETTINGS };
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return { ...DEFAULT_COMPANY_SETTINGS, ...parsed };
+        }
+    } catch (error) {
+        console.warn('No se pudo leer la configuración local:', error);
+    }
+    return { ...DEFAULT_COMPANY_SETTINGS };
+}
+
+async function loadCompanySettingsFromCloud({ silent = false } = {}) {
+    if (!isConfigSheetConfigured()) {
+        if (!silent) {
+            showAlert('Configura COMPANY_CONFIG_SHEET_ID en js/app.js para habilitar la sincronización en la nube.', 'Configuración incompleta');
+        }
+        refreshRemoteConfigUiState();
+        return false;
+    }
+
+    if (!gapi?.client?.sheets) {
+        updateRemoteConfigStatus('La API de Google Sheets no está lista. Intenta recargar.', 'danger');
+        if (!silent) {
+            showAlert('La API de Google Sheets no está lista. Recarga la página e inténtalo de nuevo.', 'Error de API');
+        }
+        return false;
+    }
+
+    const email = getCurrentUserEmail();
+    if (!email) {
+        updateRemoteConfigStatus('No se pudo determinar el correo de la sesión para sincronizar la configuración.', 'warning');
+        if (!silent) {
+            showAlert('Inicia sesión con una cuenta que entregue el correo electrónico para sincronizar la configuración.', 'Correo no disponible');
+        }
+        return false;
+    }
+
+    setRemoteConfigBusy(true, 'Buscando configuración en la nube...');
+    let success = false;
+
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: COMPANY_CONFIG_SHEET_ID,
+            range: COMPANY_CONFIG_SHEET_RANGE,
+        });
+
+        const values = response.result.values || [];
+        const lowerEmail = email.toLowerCase();
+        let foundRow = null;
+        let foundIndex = null;
+
+        for (let i = 0; i < values.length; i += 1) {
+            const rowEmail = (values[i][0] || '').toLowerCase();
+            if (rowEmail === lowerEmail) {
+                foundRow = values[i];
+                foundIndex = i + 2; // Datos comienzan en la fila 2
+                break;
+            }
+        }
+
+        if (!foundRow) {
+            companySettingsRowIndex = null;
+            remoteConfigLastLoadedAt = new Date();
+            const statusType = silent ? 'info' : 'warning';
+            updateRemoteConfigStatus('No se encontró una configuración guardada en la nube para tu cuenta. Guarda para crearla.', statusType);
+            updateRemoteConfigMeta();
+            if (!silent) {
+                showAlert('No se encontró una configuración guardada en la nube para tu cuenta. Puedes guardarla ahora para crearla.', 'Sin configuración remota');
+            }
+            return false;
+        }
+
+        let remoteSettings = null;
+        if (foundRow[1]) {
+            try {
+                const parsedSettings = JSON.parse(foundRow[1]);
+                if (parsedSettings && typeof parsedSettings === 'object') {
+                    remoteSettings = parsedSettings;
+                }
+            } catch (error) {
+                console.error('No se pudo interpretar la configuración remota:', error);
+                if (!silent) {
+                    showAlert('La configuración remota existe pero no se pudo interpretar. Se conservarán los valores locales.', 'Error de formato');
+                }
+            }
+        }
+
+        if (remoteSettings) {
+            companySettings = { ...DEFAULT_COMPANY_SETTINGS, ...remoteSettings };
+        }
+        persistCompanySettingsLocally();
+        loadSettings();
+        companySettingsRowIndex = foundIndex;
+        remoteConfigLastLoadedAt = new Date();
+
+        if (foundRow[2]) {
+            const parsedDate = new Date(foundRow[2]);
+            if (!Number.isNaN(parsedDate.getTime())) {
+                remoteConfigLastSavedAt = parsedDate;
+            }
+        }
+
+        updateRemoteConfigStatus('Configuración recuperada desde la nube.', 'success');
+        updateRemoteConfigMeta();
+        if (!silent) {
+            showAlert('La configuración de la empresa se actualizó con la copia en la nube.', 'Configuración sincronizada');
+        }
+        success = true;
+    } catch (error) {
+        console.error('Error al cargar configuración en la nube:', error);
+        updateRemoteConfigStatus('No se pudo cargar la configuración en la nube.', 'danger');
+        if (!silent) {
+            showAlert('No se pudo cargar la configuración desde la nube. Inténtalo nuevamente.', 'Error al cargar');
+        }
+    } finally {
+        setRemoteConfigBusy(false);
+        if (!success) {
+            updateRemoteConfigMeta();
+        }
+    }
+
+    return success;
+}
+
+async function saveCompanySettingsToCloud({ silent = false } = {}) {
+    if (!isConfigSheetConfigured()) {
+        updateRemoteConfigStatus('Configura COMPANY_CONFIG_SHEET_ID en js/app.js para habilitar la sincronización en la nube.', 'warning');
+        if (!silent) {
+            showAlert('Configura COMPANY_CONFIG_SHEET_ID en js/app.js para habilitar la sincronización en la nube.', 'Configuración incompleta');
+        }
+        return false;
+    }
+
+    if (!gapi?.client?.sheets) {
+        updateRemoteConfigStatus('La API de Google Sheets no está lista. Intenta recargar.', 'danger');
+        if (!silent) {
+            showAlert('La API de Google Sheets no está lista. Recarga la página e inténtalo nuevamente.', 'Error de API');
+        }
+        return false;
+    }
+
+    const email = getCurrentUserEmail();
+    if (!email) {
+        updateRemoteConfigStatus('No se pudo determinar el correo de la sesión para sincronizar la configuración.', 'warning');
+        if (!silent) {
+            showAlert('Inicia sesión con una cuenta que entregue el correo electrónico para sincronizar la configuración.', 'Correo no disponible');
+        }
+        return false;
+    }
+
+    setRemoteConfigBusy(true, 'Sincronizando configuración en la nube...');
+    let success = false;
+
+    try {
+        const payload = JSON.stringify({ ...DEFAULT_COMPANY_SETTINGS, ...companySettings });
+        const nowIso = new Date().toISOString();
+        let targetRow = companySettingsRowIndex;
+
+        if (!targetRow) {
+            const lookupResponse = await gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: COMPANY_CONFIG_SHEET_ID,
+                range: COMPANY_CONFIG_SHEET_RANGE,
+            });
+            const values = lookupResponse.result.values || [];
+            const lowerEmail = email.toLowerCase();
+            for (let i = 0; i < values.length; i += 1) {
+                if ((values[i][0] || '').toLowerCase() === lowerEmail) {
+                    targetRow = i + 2;
+                    break;
+                }
+            }
+        }
+
+        const rowValues = [[email, payload, nowIso]];
+
+        if (targetRow) {
+            const range = `${COMPANY_CONFIG_SHEET_TAB}!A${targetRow}:C${targetRow}`;
+            await gapi.client.sheets.spreadsheets.values.update({
+                spreadsheetId: COMPANY_CONFIG_SHEET_ID,
+                range,
+                valueInputOption: 'RAW',
+                resource: { values: rowValues }
+            });
+            companySettingsRowIndex = targetRow;
+        } else {
+            const appendResponse = await gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: COMPANY_CONFIG_SHEET_ID,
+                range: `${COMPANY_CONFIG_SHEET_TAB}!A:C`,
+                valueInputOption: 'RAW',
+                insertDataOption: 'INSERT_ROWS',
+                resource: { values: rowValues }
+            });
+            const updatedRange = appendResponse.result?.updates?.updatedRange || '';
+            const parsedRow = extractRowIndexFromRange(updatedRange);
+            if (parsedRow) {
+                companySettingsRowIndex = parsedRow;
+            }
+        }
+
+        const now = new Date();
+        remoteConfigLastSavedAt = now;
+        remoteConfigLastLoadedAt = now;
+        updateRemoteConfigStatus('Configuración sincronizada con la nube.', 'success');
+        updateRemoteConfigMeta();
+        if (!silent) {
+            showAlert('La configuración se guardó correctamente en la nube.', 'Sincronización exitosa');
+        }
+        success = true;
+    } catch (error) {
+        console.error('Error al guardar configuración en la nube:', error);
+        updateRemoteConfigStatus('No se pudo guardar la configuración en la nube.', 'danger');
+        if (!silent) {
+            showAlert('No se pudo guardar la configuración en la nube. Intenta nuevamente.', 'Error al sincronizar');
+        }
+    } finally {
+        setRemoteConfigBusy(false);
+        if (!success) {
+            updateRemoteConfigMeta();
+        }
+    }
+
+    return success;
+}
+
+function resetRemoteConfigState() {
+    companySettingsRowIndex = null;
+    remoteConfigLastLoadedAt = null;
+    remoteConfigLastSavedAt = null;
+    remoteConfigBusy = false;
+    updateRemoteConfigButtonsState();
+    refreshRemoteConfigUiState();
+    updateRemoteConfigMeta();
 }
 
 // --- LÓGICA DE CONTRATOS Y PORTAL ---

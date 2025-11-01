@@ -88,6 +88,35 @@ body {
     height: auto;
 }
 
+.config-section {
+    border-top: 1px dashed #dee2e6;
+    padding-top: 1.25rem;
+    margin-top: 1.25rem;
+}
+
+.config-section:first-of-type {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+}
+
+.config-actions .form-check-label {
+    font-weight: 500;
+}
+
+#remote-config-status {
+    min-height: 3.125rem;
+}
+
+#remote-config-meta {
+    min-height: 1.25rem;
+}
+
+.remote-requirements i {
+    width: 1.25rem;
+    text-align: center;
+}
+
 .status-badge {
     display: inline-block;
     padding: 0.35rem 0.75rem;

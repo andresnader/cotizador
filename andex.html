@@ -284,54 +284,107 @@
             </div>
 
             <div id="configuracion" class="tab-content">
-                <div class="card shadow-sm" style="max-width: 720px; margin: 0 auto;">
-                    <div class="card-body">
-                        <h2 class="h5 mb-3">Configuración de la Empresa y Cotización</h2>
-                        <p class="text-muted small">Esta configuración se guarda localmente en tu navegador. Puedes moverla a una hoja de "Configuración" de Google Sheets si lo deseas.</p>
-                        <form id="configForm" class="row g-3">
-                            <div class="col-md-6">
-                                <label for="companyName" class="form-label">Nombre de la Empresa</label>
-                                <input type="text" id="companyName" class="form-control" placeholder="Ej: Mi Empresa S.A.">
+                <div class="row g-4">
+                    <div class="col-xxl-7">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h2 class="h5 mb-1">Personalización de la marca</h2>
+                                <p class="text-muted small mb-4">Actualiza los datos que se muestran en las cotizaciones y contratos. Puedes guardarlos localmente o sincronizarlos con tu cuenta de Google.</p>
+                                <form id="configForm">
+                                    <div class="config-section">
+                                        <h3 class="h6 text-uppercase text-muted mb-3">Identidad corporativa</h3>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="companyName" class="form-label">Nombre de la Empresa</label>
+                                                <input type="text" id="companyName" class="form-control" placeholder="Ej: Mi Empresa S.A.">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="companyAddress" class="form-label">Dirección</label>
+                                                <input type="text" id="companyAddress" class="form-control" placeholder="Ej: Av. Principal 123, Ciudad">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="companyContact" class="form-label">Contacto (Email/Teléfono)</label>
+                                                <input type="text" id="companyContact" class="form-control" placeholder="Ej: ventas@miempresa.com / +593 99 123 4567">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="companyWebsite" class="form-label">Sitio Web (URL)</label>
+                                                <input type="url" id="companyWebsite" class="form-control" placeholder="https://www.suempresa.com">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="companyWhatsapp" class="form-label">Número de WhatsApp</label>
+                                                <input type="tel" id="companyWhatsapp" class="form-control" placeholder="593991234567">
+                                                <small class="text-muted">Incluye el código de país sin el signo "+". Ej: 593991234567</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="config-section">
+                                        <h3 class="h6 text-uppercase text-muted mb-3">Logotipo y paleta</h3>
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-6">
+                                                <label for="logoUpload" class="form-label">Logo de la Empresa</label>
+                                                <input type="file" id="logoUpload" class="form-control" accept="image/*">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Vista Previa</label>
+                                                <div class="logo-preview-wrapper">
+                                                    <img id="logoPreview" src="https://placehold.co/200x100/eef2ff/4f46e5?text=Tu+Logo" alt="Vista previa del logo">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="primaryColor" class="form-label">Color Primario</label>
+                                                <input type="color" id="primaryColor" class="form-control form-control-color">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="accentColor" class="form-label">Color de Acento</label>
+                                                <input type="color" id="accentColor" class="form-control form-control-color">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="config-actions d-flex flex-column flex-md-row align-items-md-center gap-3 mt-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="autoSyncCloud">
+                                            <label class="form-check-label" for="autoSyncCloud">Guardar automáticamente también en la nube</label>
+                                        </div>
+                                        <div class="ms-md-auto d-flex flex-wrap gap-2">
+                                            <button type="submit" class="btn btn-outline-primary"><i class="fas fa-save me-2"></i>Guardar en este dispositivo</button>
+                                            <button type="button" class="btn btn-primary" id="save-cloud-config-btn"><i class="fas fa-cloud-upload-alt me-2"></i>Guardar en la nube</button>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
-                            <div class="col-md-6">
-                                <label for="companyAddress" class="form-label">Dirección</label>
-                                <input type="text" id="companyAddress" class="form-control" placeholder="Ej: Av. Principal 123, Ciudad">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="companyContact" class="form-label">Contacto (Email/Teléfono)</label>
-                                <input type="text" id="companyContact" class="form-control" placeholder="Ej: ventas@miempresa.com / +593 99 123 4567">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="companyWebsite" class="form-label">Sitio Web (URL)</label>
-                                <input type="url" id="companyWebsite" class="form-control" placeholder="https://www.suempresa.com">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="companyWhatsapp" class="form-label">Número de WhatsApp</label>
-                                <input type="tel" id="companyWhatsapp" class="form-control" placeholder="593991234567">
-                                <small class="text-muted">Incluye el código de país sin el signo "+". Ej: 593991234567</small>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="logoUpload" class="form-label">Logo de la Empresa</label>
-                                <input type="file" id="logoUpload" class="form-control" accept="image/*">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Vista Previa</label>
-                                <div class="logo-preview-wrapper">
-                                    <img id="logoPreview" src="https://placehold.co/200x100/eef2ff/4f46e5?text=Tu+Logo" alt="Vista previa del logo">
+                        </div>
+                    </div>
+                    <div class="col-xxl-5">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body d-flex flex-column">
+                                <h2 class="h5 mb-3">Sincronización en la nube</h2>
+                                <div id="remote-config-status" class="alert alert-secondary mb-3" role="status">
+                                    <span>Inicia sesión para habilitar la sincronización.</span>
                                 </div>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-outline-primary" id="load-cloud-config-btn"><i class="fas fa-cloud-download-alt me-2"></i>Cargar desde la nube</button>
+                                </div>
+                                <div id="remote-config-meta" class="small text-muted mt-3">Sincronización automática desactivada.</div>
+                                <hr class="my-4">
+                                <h3 class="h6 text-uppercase text-muted mb-2">Requisitos</h3>
+                                <ul class="list-unstyled remote-requirements small text-muted mb-0">
+                                    <li class="d-flex gap-2">
+                                        <i class="fas fa-table text-primary mt-1"></i>
+                                        <span>Define <code>COMPANY_CONFIG_SHEET_ID</code> en <code>js/app.js</code> apuntando a tu hoja de configuraciones.</span>
+                                    </li>
+                                    <li class="d-flex gap-2 mt-2">
+                                        <i class="fas fa-user-shield text-primary mt-1"></i>
+                                        <span>Comparte la hoja con tu cuenta y concede permisos de edición.</span>
+                                    </li>
+                                    <li class="d-flex gap-2 mt-2">
+                                        <i class="fas fa-columns text-primary mt-1"></i>
+                                        <span>Crea columnas: Email (A), Configuración JSON (B) y Actualizado (C) desde la fila 2.</span>
+                                    </li>
+                                </ul>
                             </div>
-                            <div class="col-md-3">
-                                <label for="primaryColor" class="form-label">Color Primario</label>
-                                <input type="color" id="primaryColor" class="form-control form-control-color">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="accentColor" class="form-label">Color de Acento</label>
-                                <input type="color" id="accentColor" class="form-control form-control-color">
-                            </div>
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary w-100">Guardar Configuración Local</button>
-                            </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>

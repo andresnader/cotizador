@@ -57,6 +57,7 @@ let clientForm, clientList, clientRowIdInput, clientNameInput, clientRUCInput, c
 let serviceForm, serviceList, serviceRowIdInput, serviceNameInput, serviceDescriptionInput, servicePriceInput, serviceIdInput;
 let quotesHistoryList;
 let quoteClientSelect, quoteRUCInput, serviceSelect, servicePriceOverrideInput, quoteItemsBody, quoteNumberInput, quoteNotesInput, quoteDate;
+let generateQuotePdfBtn, generateContractBtn;
 let configForm, companyNameInput, companyAddressInput, companyContactInput, companyWebsiteInput, companyWhatsappInput, logoUploadInput, logoPreview, primaryColorInput, accentColorInput;
 let contractClientSelect, contractQuoteSelect, contractText, saveContractBtn;
 let portalClientSelect, clientPortalContent;
@@ -443,6 +444,8 @@ function assignDOMElements() {
     quoteNumberInput = document.getElementById('quoteNumber');
     quoteNotesInput = document.getElementById('quoteNotes');
     quoteDate = document.getElementById('quoteDate'); // Asignar quoteDate
+    generateQuotePdfBtn = document.getElementById('generate-quote-pdf-btn');
+    generateContractBtn = document.getElementById('generate-contract-btn');
 
     configForm = document.getElementById('configForm');
     companyNameInput = document.getElementById('companyName');
@@ -491,6 +494,7 @@ function assignDOMElements() {
 
     syncServicePriceOverrideField();
     initializeRemoteConfigPanel();
+    updateQuoteActionButtonsState();
 }
 
 // --- 2. LÓGICA DE AUTENTICACIÓN (AUTH) - REESTRUCTURADA ---
@@ -640,7 +644,8 @@ function clearAppData() {
      services = [];
      quotesHistory = [];
      contracts = [];
-     quoteItemsData = [];
+    quoteItemsData = [];
+    currentQuoteContextId = null;
      if(clientList) clientList.innerHTML = ''; // Limpiar tablas visualmente
      if(serviceList) serviceList.innerHTML = '';
      if(quotesHistoryList) quotesHistoryList.innerHTML = '';
@@ -649,7 +654,8 @@ function clearAppData() {
      if(quoteClientSelect) quoteClientSelect.innerHTML = '<option value="">-- Seleccione --</option>';
      if(serviceSelect) serviceSelect.innerHTML = '<option value="">-- Seleccione --</option>';
      // Podrías resetear más elementos si es necesario
-     console.log("Datos de la aplicación limpiados.");
+    console.log("Datos de la aplicación limpiados.");
+    updateQuoteActionButtonsState();
 }
 
 // Callback principal después de que el usuario inicia sesión exitosamente.
@@ -756,6 +762,7 @@ let companySettingsRowIndex = null;
 let remoteConfigLastLoadedAt = null;
 let remoteConfigLastSavedAt = null;
 let remoteConfigBusy = false;
+let currentQuoteContextId = null;
 
 // Función principal de inicialización de datos (llamada después del login)
 async function initializeDataFromGoogle() {
@@ -1258,7 +1265,8 @@ async function loadQuotesHistoryFromSheet() {
          quoteCounter = 1;
      }
      // Renderizar siempre para mostrar estado (vacío, error o datos)
-     renderQuotesHistory();
+    renderQuotesHistory();
+    updateQuoteActionButtonsState();
 }
 
 // Renderizar tabla de historial
@@ -1300,6 +1308,7 @@ function renderQuotesHistory() {
             quotesHistoryList.appendChild(row);
         });
     }
+    updateQuoteActionButtonsState();
 }
 
 // Actualizar estado de cotización en Google Sheet
@@ -1390,11 +1399,13 @@ function loadQuoteForEdit(quoteId) {
 
     // Cambiar a la pestaña del cotizador
     const tabButton = document.querySelector('.tab-button[onclick*="cotizador"]');
-     if (tabButton) {
-         changeTab({currentTarget: tabButton}, 'cotizador');
-     }
+    if (tabButton) {
+        changeTab({currentTarget: tabButton}, 'cotizador');
+    }
     showAlert(`Cotización ${quote.number} cargada.\nPuedes modificarla y generar una NUEVA cotización.\nLos cambios NO sobrescribirán la original.`, "Cotización Cargada"); // REEMPLAZO
-     window.scrollTo(0, 0); // Ir arriba
+    window.scrollTo(0, 0); // Ir arriba
+    currentQuoteContextId = quote.id;
+    updateQuoteActionButtonsState();
 }
 
 
@@ -1403,128 +1414,250 @@ async function handleSaveContractClick() {
     const quoteId = contractQuoteSelect ? contractQuoteSelect.value : null;
     const text = contractText ? contractText.value : null;
     if (!quoteId || text === null || text.trim() === '') {
-        showAlert("Selecciona una cotización aceptada y escribe el contenido del contrato.", "Datos Incompletos"); // REEMPLAZO
+        showAlert('Selecciona una cotización aceptada y escribe el contenido del contrato.', 'Datos incompletos');
         return;
     }
+
     const quote = quotesHistory.find(q => q.id === quoteId);
     if (!quote) {
-        showAlert("Cotización seleccionada no encontrada."); // REEMPLAZO
+        showAlert('Cotización seleccionada no encontrada.');
         return;
     }
 
-    // Comprobar si ya existe un Doc y qué hacer
     if (quote.googleDocId) {
-        // REEMPLAZO DE CONFIRM
-        showConfirm(`Esta cotización YA TIENE un Google Doc asociado.\n\n¿Deseas reemplazar su contenido con el texto actual?\n¡ESTA ACCIÓN NO SE PUEDE DESHACER!`, async () => {
-            // TODO: Implementar UPDATE de Google Doc (requiere borrar contenido anterior e insertar nuevo)
-            showAlert("La función para ACTUALIZAR un Google Doc existente aún no está implementada.", "Función no Disponible"); // REEMPLAZO
-            console.warn("Intento de actualizar Doc existente no implementado:", quote.googleDocId);
-        });
-        return; 
-    }
-
-    // --- Lógica para CREAR un nuevo Google Doc ---
-    if (!gapi?.client?.drive || !gapi?.client?.docs) {
-        showAlert("Error: APIs de Drive o Docs no listas.", "Error de API"); // REEMPLAZO
-        return;
-    }
-    if (!CONTRACT_TEMPLATE_ID || CONTRACT_TEMPLATE_ID === 'ID_DE_TU_PLANTILLA_DE_CONTRATO_EN_GOOGLE_DOCS') {
-        showAlert("Error: Falta configurar el ID de la Plantilla de Contrato.", "Error de Configuración"); // REEMPLAZO
+        showConfirm('Esta cotización ya tiene un contrato guardado en Google Drive. ¿Deseas abrirlo en una nueva pestaña?', () => {
+            window.open(`https://docs.google.com/document/d/${quote.googleDocId}/edit`, '_blank');
+        }, 'Contrato existente');
         return;
     }
 
     if (authStatus) authStatus.innerText = 'Creando documento de contrato...';
-    saveContractBtn.disabled = true; // Deshabilitar mientras crea
+    saveContractBtn.disabled = true;
 
     try {
-        // 1. Crear título para el nuevo Doc
-        const docTitle = `Contrato - Cotización ${quote.number} - ${quote.client?.name || 'Cliente'}`;
-
-        // 2. Copiar la plantilla
-        console.log(`Copiando plantilla ${CONTRACT_TEMPLATE_ID} para crear contrato: ${docTitle}`);
-        const copyPayload = {
-            fileId: CONTRACT_TEMPLATE_ID,
-            resource: { name: docTitle }
-        };
-        if (CONTRACTS_DRIVE_FOLDER_ID) {
-            copyPayload.resource.parents = [CONTRACTS_DRIVE_FOLDER_ID];
-        }
-        const copyResponse = await gapi.client.drive.files.copy({
-            ...copyPayload,
-            supportsAllDrives: true,
-            fields: 'id, parents'
-        });
-        const newDocId = copyResponse.result.id;
-        const assignedParents = copyResponse.result.parents || [];
-        console.log("Plantilla copiada, nuevo ID de contrato:", newDocId, "con padres:", assignedParents);
-
-        // 3. Reemplazar placeholders básicos (igual que en cotización) + insertar texto principal
-        console.log("Reemplazando placeholders básicos en contrato...");
-        const basicRequests = [
-            { replaceAllText: { containsText: { text: '{{CLIENTE_NOMBRE}}', matchCase: false }, replaceText: quote.client?.name || '' } },
-            { replaceAllText: { containsText: { text: '{{CLIENTE_RUC}}', matchCase: false }, replaceText: quote.client?.ruc || '' } },
-            { replaceAllText: { containsText: { text: '{{COTIZACION_NUMERO}}', matchCase: false }, replaceText: quote.number || '' } },
-            { replaceAllText: { containsText: { text: '{{FECHA_EMISION}}', matchCase: false }, replaceText: quote.issueDate || '' } },
-            { replaceAllText: { containsText: { text: '{{TOTAL}}', matchCase: false }, replaceText: `$${(quote.total || 0).toFixed(2)}` } },
-            // Añadir más placeholders básicos si los tienes en la plantilla
-        ];
-        await gapi.client.docs.documents.batchUpdate({
-            documentId: newDocId,
-            resource: { requests: basicRequests }
-        });
-        console.log("Placeholders básicos reemplazados.");
-
-        // 4. Insertar el texto principal del contrato (esto es más complejo, requiere encontrar dónde insertarlo)
-        // Solución simple: Reemplazar un placeholder específico como '{{CONTENIDO_CONTRATO}}'
-         console.log("Intentando reemplazar {{CONTENIDO_CONTRATO}}...");
-         const contentRequest = [{ 
-             replaceAllText: { 
-                 containsText: { text: '{{CONTENIDO_CONTRATO}}', matchCase: false }, 
-                 replaceText: text // El texto del textarea
-             } 
-         }];
-         await gapi.client.docs.documents.batchUpdate({
-             documentId: newDocId,
-             resource: { requests: contentRequest }
-         });
-         console.log("Placeholder de contenido reemplazado.");
-         // NOTA: Si {{CONTENIDO_CONTRATO}} no existe, el texto no se insertará. Asegúrate de que esté en tu plantilla.
-
-        // 5. Actualizar la hoja de Historial con el ID del nuevo Doc (Col J)
-        console.log(`Actualizando Sheet ${QUOTES_SHEET_ID} fila ${quote.rowId} Col J con Doc ID ${newDocId}`);
-        const range = `Hoja 1!J${quote.rowId}`;
-        await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: QUOTES_SHEET_ID,
-            range: range,
-            valueInputOption: 'USER_ENTERED',
-            resource: { values: [[newDocId]] }
-        });
-        console.log("Sheet actualizado con Doc ID.");
-
-        // 6. Actualizar el registro local
-        quote.googleDocId = newDocId;
-        renderQuotesHistory(); // Redibujar historial para mostrar el nuevo enlace
-
-        showAlert(`Contrato creado exitosamente en Google Drive.\nID: ${newDocId}\nSe ha guardado el enlace en el historial.`, "Contrato Creado"); // REEMPLAZO
+        const newDocId = await createContractDocumentForQuote(quote, text.trim());
+        showAlert(`Contrato creado exitosamente en Google Drive.\nID: ${newDocId}\nSe ha guardado el enlace en el historial.`, 'Contrato creado');
         if (authStatus) authStatus.innerText = 'Contrato guardado.';
-        // Limpiar textarea y deshabilitar botón? Opcional.
-        // contractText.value = '';
-        // saveContractBtn.disabled = true;
-
+        currentQuoteContextId = quote.id;
+        updateQuoteActionButtonsState();
     } catch (err) {
-         console.error("Error guardando contrato:", err);
-         const errorMsg = err.result?.error?.message || err.message || "Error desconocido.";
-         showAlert(`Error al guardar el contrato en Google Drive/Sheets: ${errorMsg}\nRevisa la consola.`, "Error al Guardar"); // REEMPLAZO
-         if (authStatus) authStatus.innerText = 'Error al guardar contrato.';
+        console.error('Error guardando contrato:', err);
+        const errorMsg = err.result?.error?.message || err.message || 'Error desconocido.';
+        showAlert(`Error al guardar el contrato en Google Drive/Sheets: ${errorMsg}\nRevisa la consola.`, 'Error al guardar');
+        if (authStatus) authStatus.innerText = 'Error al guardar contrato.';
     } finally {
-         saveContractBtn.disabled = false; // Rehabilitar botón
-     }
+        saveContractBtn.disabled = false;
+    }
+}
+
+function buildContractBodyFromQuote(quote) {
+    if (!quote) return '';
+
+    const clientName = quote.client?.name || 'Cliente';
+    const issueDate = quote.issueDate || 'N/A';
+    const validityDate = quote.validityDate && quote.validityDate !== 'Indefinida'
+        ? quote.validityDate
+        : '';
+    const items = Array.isArray(quote.items) ? quote.items : [];
+    const companyForContract = quote.companySettingsForPrint || companySettings || DEFAULT_COMPANY_SETTINGS;
+
+    const itemLines = items.map(item => {
+        const name = item.name || 'Servicio';
+        const quantity = parseFloat(item.quantity) || 1;
+        const price = parseFloat(item.price) || 0;
+        const total = (quantity * price).toFixed(2);
+        return `• ${name} — Cantidad: ${quantity} — Total: $${total}`;
+    });
+
+    let body = `Este contrato se genera a partir de la cotización ${quote.number || 'sin número'} emitida el ${issueDate} y aceptada por ${clientName}.`;
+    if (validityDate) {
+        body += `\nLa vigencia acordada se extiende hasta ${validityDate}.`;
+    }
+    if (itemLines.length > 0) {
+        body += `\n\nDetalle de servicios y/o productos contratados:\n${itemLines.join('\n')}`;
+    }
+    if (quote.notes) {
+        body += `\n\nNotas acordadas:\n${quote.notes}`;
+    }
+    body += `\n\nLas partes se comprometen a cumplir con los términos y condiciones establecidos por ${companyForContract.name || 'la empresa proveedora'}, incluyendo plazos, entregas y formas de pago acordadas.`;
+    body += `\n\nFirmas de conformidad:\n\n_______________________________    _______________________________\nRepresentante ${companyForContract.name || 'Proveedor'}    ${clientName}`;
+
+    return body;
+}
+
+async function createContractDocumentForQuote(quote, bodyText = '') {
+    if (!quote) {
+        throw new Error('No se encontró la cotización a procesar.');
+    }
+    if (!quote.rowId) {
+        throw new Error('No se pudo determinar la fila de Google Sheets asociada a la cotización.');
+    }
+    if (!gapi?.client?.drive || !gapi?.client?.docs) {
+        throw new Error('Las APIs de Google Drive o Docs no están listas.');
+    }
+    if (!CONTRACT_TEMPLATE_ID || CONTRACT_TEMPLATE_ID === 'ID_DE_TU_PLANTILLA_DE_CONTRATO_EN_GOOGLE_DOCS') {
+        throw new Error('Falta configurar el ID de la plantilla de contrato.');
+    }
+
+    const clientName = quote.client?.name || 'Cliente';
+    const docTitle = `Contrato - ${quote.number || 'Cotización'} - ${clientName}`;
+
+    const copyPayload = {
+        fileId: CONTRACT_TEMPLATE_ID,
+        resource: { name: docTitle }
+    };
+    if (CONTRACTS_DRIVE_FOLDER_ID) {
+        copyPayload.resource.parents = [CONTRACTS_DRIVE_FOLDER_ID];
+    }
+
+    const copyResponse = await gapi.client.drive.files.copy({
+        ...copyPayload,
+        supportsAllDrives: true,
+        fields: 'id, parents'
+    });
+    const newDocId = copyResponse.result.id;
+    const assignedParents = copyResponse.result.parents || [];
+    console.log('Plantilla copiada, nuevo ID de contrato:', newDocId, 'con padres:', assignedParents);
+
+    const basicRequests = [
+        { replaceAllText: { containsText: { text: '{{CLIENTE_NOMBRE}}', matchCase: false }, replaceText: quote.client?.name || '' } },
+        { replaceAllText: { containsText: { text: '{{CLIENTE_RUC}}', matchCase: false }, replaceText: quote.client?.ruc || '' } },
+        { replaceAllText: { containsText: { text: '{{COTIZACION_NUMERO}}', matchCase: false }, replaceText: quote.number || '' } },
+        { replaceAllText: { containsText: { text: '{{FECHA_EMISION}}', matchCase: false }, replaceText: quote.issueDate || '' } },
+        { replaceAllText: { containsText: { text: '{{TOTAL}}', matchCase: false }, replaceText: `$${(quote.total || 0).toFixed(2)}` } }
+    ];
+
+    await gapi.client.docs.documents.batchUpdate({
+        documentId: newDocId,
+        resource: { requests: basicRequests }
+    });
+
+    if (typeof bodyText === 'string') {
+        const contentRequest = [{
+            replaceAllText: {
+                containsText: { text: '{{CONTENIDO_CONTRATO}}', matchCase: false },
+                replaceText: bodyText
+            }
+        }];
+        try {
+            await gapi.client.docs.documents.batchUpdate({
+                documentId: newDocId,
+                resource: { requests: contentRequest }
+            });
+        } catch (error) {
+            console.warn('No se pudo reemplazar {{CONTENIDO_CONTRATO}} en la plantilla:', error);
+        }
+    }
+
+    const range = `Hoja 1!J${quote.rowId}`;
+    await gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: QUOTES_SHEET_ID,
+        range,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: [[newDocId]] }
+    });
+
+    quote.googleDocId = newDocId;
+    currentQuoteContextId = quote.id;
+    renderQuotesHistory();
+
+    return newDocId;
+}
+
+async function generateContractForCurrentQuote() {
+    if (!generateContractBtn) {
+        return;
+    }
+
+    if (!currentQuoteContextId) {
+        showAlert('Genera o carga una cotización aceptada desde el historial antes de crear el contrato.', 'Cotización no seleccionada');
+        return;
+    }
+
+    const quote = quotesHistory.find(q => q.id === currentQuoteContextId);
+    if (!quote) {
+        showAlert('La cotización seleccionada ya no está disponible. Actualiza el historial e inténtalo nuevamente.', 'Cotización no encontrada');
+        currentQuoteContextId = null;
+        updateQuoteActionButtonsState();
+        return;
+    }
+
+    if (quote.status !== 'Aceptada') {
+        showAlert('Marca la cotización como "Aceptada" en el historial para habilitar la generación del contrato.', 'Cotización pendiente');
+        updateQuoteActionButtonsState();
+        return;
+    }
+
+    if (quote.googleDocId) {
+        showConfirm('Esta cotización ya tiene un contrato guardado en Google Drive. ¿Deseas abrirlo en una nueva pestaña?', () => {
+            window.open(`https://docs.google.com/document/d/${quote.googleDocId}/edit`, '_blank');
+        }, 'Contrato existente');
+        return;
+    }
+
+    if (!quote.rowId) {
+        showAlert('No se encontró la fila de Google Sheets para esta cotización. Refresca el historial antes de continuar.', 'Referencia incompleta');
+        return;
+    }
+
+    setButtonLoadingState(generateContractBtn, true, 'Generando contrato...');
+    if (authStatus) authStatus.innerText = 'Generando contrato en Google Drive...';
+
+    try {
+        const bodyText = buildContractBodyFromQuote(quote);
+        const newDocId = await createContractDocumentForQuote(quote, bodyText);
+        showAlert(`Contrato creado exitosamente en Google Drive.\nID: ${newDocId}\nPuedes editarlo desde tu cuenta.`, 'Contrato creado');
+        if (authStatus) authStatus.innerText = 'Contrato guardado en Google Drive.';
+        window.open(`https://docs.google.com/document/d/${newDocId}/edit`, '_blank');
+    } catch (error) {
+        console.error('Error al generar el contrato desde el resumen:', error);
+        const errorMsg = error.result?.error?.message || error.message || 'Error desconocido.';
+        showAlert(`No se pudo generar el contrato: ${errorMsg}\nVerifica los permisos o la plantilla e inténtalo nuevamente.`, 'Error al generar contrato');
+        if (authStatus) authStatus.innerText = 'Error al generar contrato.';
+    } finally {
+        setButtonLoadingState(generateContractBtn, false);
+        updateQuoteActionButtonsState();
+    }
+}
+
+function updateQuoteActionButtonsState() {
+    if (!generateContractBtn) {
+        return;
+    }
+
+    if (generateContractBtn.classList.contains('is-loading')) {
+        return;
+    }
+
+    let disabled = true;
+    let tooltip = 'Genera o carga una cotización y márcala como aceptada para habilitar esta acción.';
+
+    if (currentQuoteContextId) {
+        const quote = quotesHistory.find(q => q.id === currentQuoteContextId);
+        if (quote) {
+            if (quote.status === 'Aceptada') {
+                if (!quote.googleDocId) {
+                    disabled = false;
+                    tooltip = 'Genera el contrato en Google Docs para la cotización aceptada seleccionada.';
+                } else {
+                    tooltip = 'Esta cotización ya tiene un contrato guardado en Google Drive.';
+                }
+            } else {
+                tooltip = 'Marca la cotización como "Aceptada" en el historial para generar el contrato.';
+            }
+        } else {
+            tooltip = 'Selecciona nuevamente la cotización desde el historial.';
+        }
+    }
+
+    generateContractBtn.disabled = disabled;
+    generateContractBtn.title = tooltip;
 }
 
 
 // --- LÓGICA DE GENERACIÓN Y GUARDADO DE COTIZACIÓN ---
-function setGenerateQuoteButtonLoading(isLoading, labelWhenLoading = 'Generando...') {
-    const button = document.getElementById('generate-quote-btn');
+function setButtonLoadingState(buttonOrId, isLoading, labelWhenLoading = 'Procesando...') {
+    const button = typeof buttonOrId === 'string' ? document.getElementById(buttonOrId) : buttonOrId;
     if (!button) return;
 
     if (isLoading) {
@@ -1533,15 +1666,15 @@ function setGenerateQuoteButtonLoading(isLoading, labelWhenLoading = 'Generando.
         }
         button.disabled = true;
         button.classList.add('is-loading');
-        const loadingLabel = labelWhenLoading || 'Generando...';
+        const loadingLabel = labelWhenLoading || 'Procesando...';
         button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${loadingLabel}`;
     } else {
-        button.disabled = false;
         button.classList.remove('is-loading');
         if (button.dataset.originalHtml) {
             button.innerHTML = button.dataset.originalHtml;
             delete button.dataset.originalHtml;
         }
+        button.disabled = false;
     }
 }
 
@@ -1596,16 +1729,16 @@ async function generatePrintableQuote() {
     };
     quoteRecord.companySettingsForPrint = { ...companySettings };
 
-    setGenerateQuoteButtonLoading(true, 'Preparando librerías...');
+    setButtonLoadingState('generate-quote-pdf-btn', true, 'Preparando librerías...');
     if (authStatus) authStatus.innerText = 'Preparando librerías de PDF...';
 
     try {
         const pdfLibraries = await ensurePdfLibrariesAvailable();
-        setGenerateQuoteButtonLoading(true, 'Generando PDF...');
+        setButtonLoadingState('generate-quote-pdf-btn', true, 'Generando PDF...');
         if (authStatus) authStatus.innerText = 'Generando PDF de la cotización...';
         const pdfBlob = await generateQuotePdfBlob(quoteRecord, pdfLibraries);
 
-        setGenerateQuoteButtonLoading(true, 'Guardando en Google Drive...');
+        setButtonLoadingState('generate-quote-pdf-btn', true, 'Guardando en Google Drive...');
         if (authStatus) authStatus.innerText = 'Guardando PDF en Google Drive...';
         const pdfFileName = `Cotizacion-${quoteRecord.number}.pdf`;
         const pdfIdFromDrive = await uploadPdfBlobToDrive(pdfBlob, pdfFileName, QUOTES_DRIVE_FOLDER_ID);
@@ -1629,7 +1762,7 @@ async function generatePrintableQuote() {
             quoteRecord.googlePdfId || ''
         ];
 
-        setGenerateQuoteButtonLoading(true, 'Registrando en Google Sheets...');
+        setButtonLoadingState('generate-quote-pdf-btn', true, 'Registrando en Google Sheets...');
         if (authStatus) authStatus.innerText = 'Guardando registro en Google Sheets...';
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: QUOTES_SHEET_ID,
@@ -1657,13 +1790,17 @@ async function generatePrintableQuote() {
         syncServicePriceOverrideField();
         renderQuoteItems();
 
+        currentQuoteContextId = quoteRecord.id;
+        updateQuoteActionButtonsState();
+
     } catch (err) {
         console.error('Error generando/guardando cotización:', err);
         const errorMsg = err.result?.error?.message || err.message || 'Error desconocido.';
         showAlert(`Error al generar/guardar la cotización: ${errorMsg}\nRevisa la consola.`, 'Error al Guardar');
         if (authStatus) authStatus.innerText = 'Error al generar/guardar.';
     } finally {
-        setGenerateQuoteButtonLoading(false);
+        setButtonLoadingState('generate-quote-pdf-btn', false);
+        updateQuoteActionButtonsState();
     }
 }
 
@@ -2517,6 +2654,9 @@ function deleteQuote(quoteId, rowId, googleDocId = '', googlePdfId = '') {
             }
 
             quotesHistory = quotesHistory.filter(q => q.id !== quoteId);
+            if (currentQuoteContextId === quoteId) {
+                currentQuoteContextId = null;
+            }
             quoteCounter = quotesHistory.length + 1;
             renderQuotesHistory();
             showAlert('Cotización eliminada correctamente.', 'Cotización eliminada');

@@ -114,9 +114,14 @@
                                 <div class="summary-line"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
                                 <div class="summary-line"><span>IVA (15%)</span><span id="iva">$0.00</span></div>
                                 <div class="summary-total"><span id="total-label">TOTAL</span><span id="total">$0.00</span></div>
-                                <button id="generate-quote-btn" onclick="generatePrintableQuote()" class="btn btn-primary w-100 mt-4">
-                                    <i class="fas fa-file-circle-plus me-2"></i>Generar y Guardar Cotización
-                                </button>
+                                <div class="d-grid gap-2 mt-4">
+                                    <button id="generate-quote-pdf-btn" onclick="generatePrintableQuote()" class="btn btn-primary">
+                                        <i class="fas fa-file-circle-plus me-2"></i>Generar Cotización (PDF)
+                                    </button>
+                                    <button id="generate-contract-btn" onclick="generateContractForCurrentQuote()" class="btn btn-outline-primary" disabled>
+                                        <i class="fas fa-file-contract me-2"></i>Generar Contrato
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

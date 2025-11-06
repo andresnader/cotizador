@@ -42,11 +42,6 @@ const COMPANY_CONFIG_SHEET_ID = 'ID_DE_TU_HOJA_DE_CONFIGURACION';
 const COMPANY_CONFIG_SHEET_TAB = 'Configuracion';
 const COMPANY_CONFIG_SHEET_RANGE = `${COMPANY_CONFIG_SHEET_TAB}!A2:C`;
 
-// URLs de librerías externas utilizadas para generar PDFs
-const HTML2CANVAS_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-const JSPDF_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-
-
 let tokenClient;
 // let gapiInited = false; // Ya no se usan como flags globales simples
 // let gisInited = false;
@@ -172,8 +167,7 @@ function formatMultilineText(value) {
     return escapeHtml(value).replace(/\r?\n/g, '<br>');
 }
 
-const externalScriptPromises = new Map();
-let pdfLibrariesPromise = null;
+let cachedPdfLibraries = null;
 
 function resolveHtml2canvasFunction() {
     if (typeof window.html2canvas === 'function') {
@@ -193,107 +187,23 @@ function resolveJsPdfConstructor() {
     return null;
 }
 
-function loadExternalScriptOnce(src, readinessCheck) {
-    if (!src) return Promise.resolve();
-    if (externalScriptPromises.has(src)) {
-        return externalScriptPromises.get(src);
-    }
-
-    const promise = new Promise((resolve, reject) => {
-        const existingScript = Array.from(document.getElementsByTagName('script')).find(script => script.src === src);
-
-        const markAsLoaded = (scriptEl) => {
-            if (scriptEl) {
-                scriptEl.dataset.loaded = 'true';
-            }
-            resolve();
-        };
-
-        const handleError = () => {
-            reject(new Error(`No se pudo cargar el script externo: ${src}`));
-        };
-
-        const isReady = () => {
-            if (typeof readinessCheck === 'function') {
-                try {
-                    return !!readinessCheck();
-                } catch (err) {
-                    console.warn('Error comprobando disponibilidad de librería externa:', err);
-                }
-            }
-            return false;
-        };
-
-        if (existingScript) {
-            const readyState = existingScript.readyState;
-            if (existingScript.dataset.loaded === 'true' || existingScript.getAttribute('data-loaded') === 'true' || readyState === 'complete' || readyState === 'loaded' || isReady()) {
-                markAsLoaded(existingScript);
-                return;
-            }
-
-            existingScript.addEventListener('load', () => markAsLoaded(existingScript), { once: true });
-            existingScript.addEventListener('error', handleError, { once: true });
-
-            // Fallback: si el evento load ya ocurrió antes de registrar el listener, verificar pronto la disponibilidad.
-            setTimeout(() => {
-                if (isReady()) {
-                    markAsLoaded(existingScript);
-                }
-            }, 500);
-            return;
-        }
-
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.defer = true;
-        script.addEventListener('load', () => markAsLoaded(script), { once: true });
-        script.addEventListener('error', handleError, { once: true });
-        document.head.appendChild(script);
-    });
-
-    externalScriptPromises.set(src, promise);
-    promise.catch(() => {
-        externalScriptPromises.delete(src);
-    });
-    return promise;
-}
-
 async function ensurePdfLibrariesAvailable() {
-    if (pdfLibrariesPromise) {
-        return pdfLibrariesPromise;
+    if (cachedPdfLibraries) {
+        return cachedPdfLibraries;
     }
 
-    pdfLibrariesPromise = (async () => {
-        let html2canvasFn = resolveHtml2canvasFunction();
-        if (!html2canvasFn) {
-            await loadExternalScriptOnce(HTML2CANVAS_CDN_URL, resolveHtml2canvasFunction);
-            html2canvasFn = resolveHtml2canvasFunction();
-        }
-
-        let jsPDFConstructor = resolveJsPdfConstructor();
-        if (!jsPDFConstructor) {
-            await loadExternalScriptOnce(JSPDF_CDN_URL, resolveJsPdfConstructor);
-            jsPDFConstructor = resolveJsPdfConstructor();
-        }
-
-        if (typeof html2canvasFn !== 'function') {
-            throw new Error('La librería html2canvas no está disponible.');
-        }
-        if (typeof jsPDFConstructor !== 'function') {
-            throw new Error('La librería jsPDF no está disponible.');
-        }
-
-        return { html2canvasFn, jsPDFConstructor };
-    })();
-
-    try {
-        const libraries = await pdfLibrariesPromise;
-        return libraries;
-    } catch (error) {
-        pdfLibrariesPromise = null;
-        throw error;
+    const html2canvasFn = resolveHtml2canvasFunction();
+    if (typeof html2canvasFn !== 'function') {
+        throw new Error('La librería html2canvas no está disponible. Verifica la conexión a internet o el script CDN.');
     }
+
+    const jsPDFConstructor = resolveJsPdfConstructor();
+    if (typeof jsPDFConstructor !== 'function') {
+        throw new Error('La librería jsPDF no está disponible. Verifica la conexión a internet o el script CDN.');
+    }
+
+    cachedPdfLibraries = { html2canvasFn, jsPDFConstructor };
+    return cachedPdfLibraries;
 }
 
 async function waitForImagesToLoad(container) {
@@ -1747,8 +1657,8 @@ async function generatePrintableQuote() {
     };
     quoteRecord.companySettingsForPrint = { ...companySettings };
 
-    setButtonLoadingState('generate-quote-pdf-btn', true, 'Preparando librerías...');
-    if (authStatus) authStatus.innerText = 'Preparando librerías de PDF...';
+    setButtonLoadingState('generate-quote-pdf-btn', true, 'Generando PDF...');
+    if (authStatus) authStatus.innerText = 'Generando PDF de la cotización...';
 
     try {
         const pdfLibraries = await ensurePdfLibrariesAvailable();

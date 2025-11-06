@@ -193,7 +193,7 @@ function resolveJsPdfConstructor() {
     return null;
 }
 
-function loadExternalScriptOnce(src) {
+function loadExternalScriptOnce(src, readinessCheck) {
     if (!src) return Promise.resolve();
     if (externalScriptPromises.has(src)) {
         return externalScriptPromises.get(src);
@@ -213,15 +213,33 @@ function loadExternalScriptOnce(src) {
             reject(new Error(`No se pudo cargar el script externo: ${src}`));
         };
 
+        const isReady = () => {
+            if (typeof readinessCheck === 'function') {
+                try {
+                    return !!readinessCheck();
+                } catch (err) {
+                    console.warn('Error comprobando disponibilidad de librería externa:', err);
+                }
+            }
+            return false;
+        };
+
         if (existingScript) {
             const readyState = existingScript.readyState;
-            if (existingScript.dataset.loaded === 'true' || readyState === 'complete' || readyState === 'loaded') {
+            if (existingScript.dataset.loaded === 'true' || existingScript.getAttribute('data-loaded') === 'true' || readyState === 'complete' || readyState === 'loaded' || isReady()) {
                 markAsLoaded(existingScript);
                 return;
             }
 
             existingScript.addEventListener('load', () => markAsLoaded(existingScript), { once: true });
             existingScript.addEventListener('error', handleError, { once: true });
+
+            // Fallback: si el evento load ya ocurrió antes de registrar el listener, verificar pronto la disponibilidad.
+            setTimeout(() => {
+                if (isReady()) {
+                    markAsLoaded(existingScript);
+                }
+            }, 500);
             return;
         }
 
@@ -249,13 +267,13 @@ async function ensurePdfLibrariesAvailable() {
     pdfLibrariesPromise = (async () => {
         let html2canvasFn = resolveHtml2canvasFunction();
         if (!html2canvasFn) {
-            await loadExternalScriptOnce(HTML2CANVAS_CDN_URL);
+            await loadExternalScriptOnce(HTML2CANVAS_CDN_URL, resolveHtml2canvasFunction);
             html2canvasFn = resolveHtml2canvasFunction();
         }
 
         let jsPDFConstructor = resolveJsPdfConstructor();
         if (!jsPDFConstructor) {
-            await loadExternalScriptOnce(JSPDF_CDN_URL);
+            await loadExternalScriptOnce(JSPDF_CDN_URL, resolveJsPdfConstructor);
             jsPDFConstructor = resolveJsPdfConstructor();
         }
 

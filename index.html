@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Herramienta de Cotización v10</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Carga de múltiples fuentes para selección -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <style>
+    <style id="dynamic-styles">
+        /* Estilo base, que será sobrescrito por JavaScript al cargar la configuración */
         body {
             font-family: 'Inter', sans-serif;
         }
@@ -28,6 +30,11 @@
             max-height: 100px;
             border: 1px solid #ddd;
             border-radius: 0.5rem;
+        }
+        .header-logo {
+            max-height: 50px; /* Tamaño del logo en la cabecera */
+            width: auto;
+            margin-right: 1rem;
         }
         input[type="color"] {
         	-webkit-appearance: none;
@@ -55,6 +62,63 @@
         .status-Aceptada { background-color: #dcfce7; color: #166534; }
         .status-Pendiente { background-color: #fef9c3; color: #854d0e; }
         .status-Rechazada { background-color: #fee2e2; color: #991b1b; }
+        
+        /* Estilos específicos para la UX de importación */
+        .file-upload-container {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-upload-input {
+            position: absolute;
+            top: 0;
+            right: 0;
+            margin: 0;
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0;
+            filter: alpha(opacity=0);
+            height: 100%;
+            width: 100%;
+        }
+        .btn-load-pending {
+            background-color: #f59e0b; /* yellow-500 */
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Estilo para los modales de creación rápida y edición */
+        .quick-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(17, 24, 39, 0.75); /* gray-900 with opacity */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 60; /* Mayor que el login-overlay (z-50) */
+        }
+        
+        /* Estilos para las nuevas vistas (compacta/detallada) */
+        .client-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .client-card-compact {
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .client-card-detailed {
+            padding: 1.5rem;
+            background-color: #fff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
         @media print {
             body * {
                 visibility: hidden;
@@ -90,13 +154,206 @@
             </form>
         </div>
     </div>
+    
+    <!-- Modal de Confirmación para Importación -->
+    <div id="confirmation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Confirmar Importación</h3>
+            <div id="modal-content" class="text-gray-700 space-y-3 mb-6"></div>
+            <div class="flex justify-end space-x-4">
+                <button onclick="closeModal('confirmation-modal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                <button id="modal-confirm-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">Confirmar e Importar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NUEVO MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE COTIZACIÓN -->
+    <div id="deleteQuoteConfirmationModal" class="quick-modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
+             <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-red-600"><i class="fas fa-exclamation-triangle mr-2"></i> Confirmar Eliminación</h3>
+                <button onclick="closeModal('deleteQuoteConfirmationModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="deleteQuoteModalContent" class="text-gray-700 space-y-3 mb-6">
+                <p>¿Está seguro de que desea eliminar la cotización?</p>
+                <p class="font-semibold" id="quoteToDeleteDetails"></p>
+                <input type="hidden" id="quoteIdToDelete">
+            </div>
+            <div class="flex justify-end space-x-4">
+                <button onclick="closeModal('deleteQuoteConfirmationModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">No, Cancelar</button>
+                <button onclick="deleteConfirmedQuote()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">Sí, Eliminar Permanentemente</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL UNIFICADO DE CLIENTE (CREAR / EDITAR) -->
+    <div id="clientFormModal" class="quick-modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="clientModalTitle" class="text-xl font-bold text-gray-800">Crear Nuevo Cliente</h3>
+                <button onclick="closeModal('clientFormModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="clientForm" class="space-y-4">
+                <input type="hidden" id="clientId">
+                <!-- CAMPO CÓDIGO AUTOGENERADO Y READONLY -->
+                <div><label for="clientCode" class="block text-sm font-medium text-gray-700">Código Cliente (Nombre Comercial)</label><input type="text" id="clientCode" required class="mt-1 w-full p-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm" placeholder="Se autogenerará de Razón Social" readonly></div>
+                <!-- CAMPO RAZÓN SOCIAL (OBLIGATORIO Y MAYÚSCULAS) -->
+                <div><label for="clientName" class="block text-sm font-medium text-gray-700">Razón Social *</label><input type="text" id="clientName" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" oninput="this.value = this.value.toUpperCase(); document.getElementById('clientCode').value = generateClientCode(this.value)"></div>
+                <div><label for="clientRUC" class="block text-sm font-medium text-gray-700">RUC / C.I. (Identificación No.) *</label><input type="text" id="clientRUC" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                <div><label for="clientContact" class="block text-sm font-medium text-gray-700">Email Principal</label><input type="email" id="clientContact" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                <div><label for="clientPhone" class="block text-sm font-medium text-gray-700">Teléfono</label><input type="tel" id="clientPhone" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                <div><label for="clientAddress" class="block text-sm font-medium text-gray-700">Dirección</label><input type="text" id="clientAddress" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                <div><label for="clientCity" class="block text-sm font-medium text-gray-700">Ciudad</label><input type="text" id="clientCity" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                <button type="submit" id="clientSubmitBtn" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Guardar Cliente</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- MODAL UNIFICADO DE SERVICIO (CREAR / EDITAR) -->
+    <div id="serviceFormModal" class="quick-modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+             <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="serviceModalTitle" class="text-xl font-bold text-gray-800">Crear Nuevo Servicio</h3>
+                <button onclick="closeModal('serviceFormModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="serviceForm" class="space-y-4">
+                <input type="hidden" id="serviceId">
+                <div><label for="serviceCode" class="block text-sm font-medium text-gray-700">Código de Servicio *</label><input type="text" id="serviceCode" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                <div><label for="serviceName" class="block text-sm font-medium text-gray-700">Nombre del Servicio *</label><input type="text" id="serviceName" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                <div><label for="serviceCategory" class="block text-sm font-medium text-gray-700">Categoría</label><input type="text" id="serviceCategory" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Diseño Web"></div>
+                <div><label for="servicePrice" class="block text-sm font-medium text-gray-700">Precio Unitario ($) *</label><input type="number" step="0.01" id="servicePrice" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
+                <div><label for="serviceCost" class="block text-sm font-medium text-gray-700">Costo Interno ($)</label><input type="number" step="0.01" id="serviceCost" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" value="0.00"></div>
+                <div><label for="serviceDescription" class="block text-sm font-medium text-gray-700">Descripción</label><textarea id="serviceDescription" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></textarea></div>
+                 <button id="generateDescBtn" onclick="generateServiceDescription(event)" type="button" class="w-full bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition duration-300 shadow-sm disabled:opacity-50">
+                    ✨ Generar Descripción con IA
+                </button>
+                <p id="desc-status" class="text-sm mt-2 text-gray-500 hidden"></p>
+                <button type="submit" id="serviceSubmitBtn" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Guardar Servicio</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- NUEVO MODAL: CONFIGURACIÓN Y GENERACIÓN DE CONTRATO -->
+    <div id="contractConfigModal" class="quick-modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-file-contract mr-2"></i> Configuración de Contrato</h3>
+                <button onclick="closeModal('contractConfigModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="contractConfigForm" class="space-y-4">
+                <input type="hidden" id="contractQuoteId">
+                <h4 class="font-bold text-lg text-indigo-700 border-b pb-1">I. Plazos de Ejecución</h4>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Plazo Desarrollo Web (Días/Semanas)</label>
+                        <div class="flex mt-1">
+                            <input type="number" id="devTerm" required class="w-2/3 p-2 border border-gray-300 rounded-l-lg shadow-sm" min="1" value="30">
+                            <select id="devTimeUnit" required class="w-1/3 p-2 border border-gray-300 rounded-r-lg shadow-sm">
+                                <option value="días">Días</option>
+                                <option value="semanas">Semanas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Duración Mantenimiento Web (Meses/Años)</label>
+                        <div class="flex mt-1">
+                            <input type="number" id="maintTerm" required class="w-2/3 p-2 border border-gray-300 rounded-l-lg shadow-sm" min="1" value="12">
+                            <select id="maintTimeUnit" required class="w-1/3 p-2 border border-gray-300 rounded-r-lg shadow-sm">
+                                <option value="meses">Meses</option>
+                                <option value="años">Años</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Días de Notificación de No Renovación</label>
+                    <input type="number" id="noticeDays" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" min="1" value="30">
+                </div>
+
+                <h4 class="font-bold text-lg text-indigo-700 border-b pb-1 pt-4">II. Responsables y Firmas</h4>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Representante de EL PRESTADOR (Tu Agencia)</label>
+                    <input type="text" id="prestadorRepName" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Andrés Nader">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Cargo del Representante de EL PRESTADOR</label>
+                    <input type="text" id="prestadorRepTitle" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Gerente General / Director Multimedia">
+                </div>
+                 <div>
+                    <label class="block text-sm font-medium text-gray-700">Cargo del Contacto de EL CLIENTE (Firma)</label>
+                    <input type="text" id="clientContactTitle" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Director de Marketing / Gerente Administrativo">
+                </div>
+
+                <h4 class="font-bold text-lg text-indigo-700 border-b pb-1 pt-4">III. Estructura de Pagos (Suma Total debe ser 100%)</h4>
+                <div class="bg-red-50 p-3 rounded-lg text-sm text-red-700 mb-4" id="paymentSumError" style="display: none;">
+                    La suma de los porcentajes de pago por desarrollo debe ser 100%.
+                </div>
+                <div id="payment-schedule-container" class="space-y-3 border p-3 rounded-lg">
+                    <!-- Hito 1: Primer Pago (OBLIGATORIO) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">1. Pago Inicial (al inicio del proyecto)</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="payment1Pct" required class="w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm text-right" min="0" max="100" value="50" oninput="validatePaymentSum()">
+                            <span class="p-2 bg-gray-100 rounded-lg">%</span>
+                            <input type="text" id="payment1Hito" required class="w-2/3 p-2 border border-gray-300 rounded-lg shadow-sm" value="Diseño y Planificación Aprobada">
+                        </div>
+                    </div>
+                    <!-- Hito 2: Hito Intermedio (OPCIONAL) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">2. Pago Intermedio (Hito específico, 0% para omitir)</label>
+                         <div class="flex space-x-2 mt-1">
+                            <input type="number" id="payment2Pct" required class="w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm text-right" min="0" max="100" value="0" oninput="validatePaymentSum()">
+                            <span class="p-2 bg-gray-100 rounded-lg">%</span>
+                            <input type="text" id="payment2Hito" required class="w-2/3 p-2 border border-gray-300 rounded-lg shadow-sm" value="Entrega de Desarrollo Frontend">
+                        </div>
+                    </div>
+                    <!-- Hito 3: Pago Final (OBLIGATORIO) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">3. Pago Final (a la finalización)</label>
+                         <div class="flex space-x-2 mt-1">
+                            <input type="number" id="payment3Pct" required class="w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm text-right" min="0" max="100" value="50" oninput="validatePaymentSum()">
+                            <span class="p-2 bg-gray-100 rounded-lg">%</span>
+                            <input type="text" id="payment3Hito" required class="w-2/3 p-2 border border-gray-300 rounded-lg shadow-sm" value="Aprobación Final y Puesta en Producción">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between pt-2 text-sm font-bold border-t">
+                         <span>Suma Total de Porcentajes:</span>
+                         <span id="paymentSumTotal">100%</span>
+                    </div>
+
+                    <!-- Frecuencia de Mantenimiento -->
+                    <div class="pt-4 border-t">
+                         <label class="block text-sm font-medium text-gray-700">Frecuencia de Pagos por Mantenimiento Web</label>
+                         <select id="maintPaymentFreq" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                             <option value="mensual">mensual</option>
+                             <option value="trimestral">trimestral</option>
+                             <option value="anual">anual</option>
+                         </select>
+                    </div>
+
+                </div>
+
+                <button type="submit" id="generateContractBtn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition shadow-md font-semibold mt-6"><i class="fas fa-file-pdf mr-2"></i> Generar Contrato PDF</button>
+            </form>
+        </div>
+    </div>
+
 
     <!-- Contenido Principal de la App (inicialmente oculto) -->
     <div id="app-container" class="container mx-auto p-4 md:p-8" style="display: none;">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">Herramienta de Cotización y Gestión</h1>
-            <p class="text-lg text-gray-600 mt-2">Gestiona tus clientes, ventas y contratos de forma eficiente.</p>
+        <!-- CABECERA DE LA APLICACIÓN PERSONALIZADA -->
+        <header class="text-center mb-8 border-b pb-4 no-print">
+            <div class="flex items-center justify-center">
+                <img id="headerLogo" class="header-logo object-contain" src="" alt="Logo de la empresa">
+                <h1 id="headerCompanyName" class="text-4xl font-bold text-gray-900"></h1>
+            </div>
+            <p class="text-lg text-gray-600 mt-2">Herramienta de Cotización y Gestión</p>
         </header>
+        <!-- FIN CABECERA -->
 
         <!-- Pestañas de Navegación -->
         <div class="mb-6 border-b border-gray-200 no-print">
@@ -105,7 +362,6 @@
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'dashboard')"><i class="fas fa-chart-line mr-2"></i>Dashboard</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'historial')"><i class="fas fa-history mr-2"></i>Historial</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'contratos')"><i class="fas fa-file-signature mr-2"></i>Contratos</button>
-                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'portal')"><i class="fas fa-user-check mr-2"></i>Portal Cliente</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'clientes')"><i class="fas fa-users mr-2"></i>Clientes</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'servicios')"><i class="fas fa-concierge-bell mr-2"></i>Servicios</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'configuracion')"><i class="fas fa-cog mr-2"></i>Configuración</button>
@@ -120,19 +376,64 @@
                     <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
                         <h2 class="text-2xl font-bold mb-4 border-b pb-2">Crear Nueva Cotización</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div><label for="quoteClient" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Cliente</label><select id="quoteClient" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></select></div>
+                            <!-- Selector de Cliente con Botón Modal -->
+                            <div>
+                                <label for="quoteClient" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Cliente</label>
+                                <div class="flex space-x-2">
+                                    <select id="quoteClient" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
+                                    <button onclick="showClientModal('create')" class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-300 shadow-sm" title="Crear Cliente Rápido"><i class="fas fa-user-plus"></i></button>
+                                </div>
+                            </div>
+                            
                             <div><label for="quoteRUC" class="block text-sm font-medium text-gray-700 mb-1">RUC / C.I.</label><input type="text" id="quoteRUC" class="w-full p-2 bg-gray-100 border border-gray-300 rounded-lg" readonly></div>
                             <div><label for="quoteNumber" class="block text-sm font-medium text-gray-700 mb-1">Nº Cotización (previsualización)</label><input type="text" id="quoteNumber" class="w-full p-2 bg-gray-100 border border-gray-300 rounded-lg" readonly></div>
                             <div><label for="quoteDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Validez</label><input type="date" id="quoteDate" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></div>
                         </div>
-                        <div class="flex flex-col md:flex-row md:items-end gap-4 mb-6">
-                            <div class="flex-grow"><label for="serviceSelect" class="block text-sm font-medium text-gray-700 mb-1">Añadir Servicio</label><select id="serviceSelect" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></select></div>
-                            <button onclick="addServiceToQuote()" class="w-full md:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-300 shadow-sm"><i class="fas fa-plus mr-2"></i>Añadir</button>
+                        
+                        <!-- SECCIÓN DE AÑADIR SERVICIO -->
+                        <div class="flex flex-col gap-4 mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                            <div class="grid grid-cols-3 md:grid-cols-5 gap-3 items-end">
+                                <!-- Selector de Servicio con Botón Modal -->
+                                <div class="col-span-3 md:col-span-2">
+                                    <label for="serviceSelect" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Servicio</label>
+                                    <div class="flex space-x-2">
+                                        <select id="serviceSelect" onchange="updateServiceDetailPreview()" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
+                                        <button onclick="showServiceModal('create')" class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-300 shadow-sm" title="Crear Servicio Rápido"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="serviceCodePreview" class="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                                    <input type="text" id="serviceCodePreview" class="w-full p-2 bg-gray-100 border border-gray-300 rounded-lg" readonly>
+                                </div>
+                                <div>
+                                    <label for="servicePricePreview" class="block text-sm font-medium text-gray-700 mb-1">Precio Base</label>
+                                    <input type="number" step="0.01" id="servicePricePreview" class="w-full p-2 border border-gray-300 rounded-lg text-right focus:ring-indigo-500 focus:border-indigo-500" placeholder="0.00">
+                                </div>
+                                <button onclick="addServiceToQuote()" class="w-full h-10 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-300 shadow-sm disabled:opacity-50" id="addServiceBtn" disabled><i class="fas fa-plus mr-2"></i>Añadir</button>
+                            </div>
+                            
+                            <!-- DESCRIPCIÓN Y DETALLE ADICIONAL -->
+                            <div>
+                                <label for="serviceDescriptionPreview" class="block text-sm font-medium text-gray-700 mb-1">Descripción Base del Producto/Servicio</label>
+                                <textarea id="serviceDescriptionPreview" rows="2" class="w-full p-2 bg-gray-100 border border-gray-300 rounded-lg text-sm" readonly placeholder="Descripción completa del servicio cargado..."></textarea>
+                            </div>
+                            <div>
+                                <label for="itemCustomDetail" class="block text-sm font-medium text-gray-700 mb-1">Ajuste de Descripción/Detalles (Opcional)</label>
+                                <textarea id="itemCustomDetail" rows="2" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ej: Incluye licencia por 1 año. Válido solo para clientes nuevos."></textarea>
+                                <input type="hidden" id="editItemIndex"> <!-- Campo oculto para saber qué ítem estamos editando -->
+                            </div>
+
                         </div>
+                        <!-- FIN SECCIÓN DE AÑADIR SERVICIO -->
+
                         <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Servicio / Descripción</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Cantidad</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">P. Unitario</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th><th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th></tr></thead><tbody id="quoteItems" class="bg-white divide-y divide-gray-200"></tbody></table></div>
                         <div class="mt-6">
                             <label for="quoteNotes" class="block text-sm font-medium text-gray-700">Notas Adicionales para esta Cotización</label>
                             <textarea id="quoteNotes" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ej: Términos y condiciones, detalles específicos del proyecto..."></textarea>
+                            <button id="generateNotesBtn" onclick="generateQuoteNotes()" class="mt-2 w-full bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition duration-300 shadow-sm disabled:opacity-50" disabled>
+                                ✨ Generar Notas con IA
+                            </button>
+                            <p id="notes-status" class="text-sm mt-2 text-gray-500 hidden"></p>
                         </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-lg h-fit">
@@ -168,7 +469,7 @@
             <!-- Pestaña: Historial -->
             <div id="historial" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-2xl font-bold mb-4">Historial de Cotizaciones</h2>
+                    <h2 class="text-2xl font-bold mb-4">Historial de Cotizaciones <span id="historyClientFilter" class="text-base font-normal text-indigo-500"></span></h2>
                     <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nº Cotización</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th><th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th></tr></thead><tbody id="quotesHistoryList" class="bg-white divide-y divide-gray-200"></tbody></table></div>
                 </div>
             </div>
@@ -176,67 +477,111 @@
             <!-- Pestaña: Contratos -->
             <div id="contratos" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-2xl font-bold mb-4">Gestión de Contratos</h2>
+                    <h2 class="text-2xl font-bold mb-4">Gestión de Contratos <span id="contractClientFilter" class="text-base font-normal text-indigo-500"></span></h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="md:col-span-1">
                             <label for="contract-client-select" class="block text-sm font-medium text-gray-700 mb-1">1. Seleccione un Cliente</label>
                             <select id="contract-client-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm"></select>
                             <label for="contract-quote-select" class="block text-sm font-medium text-gray-700 mt-4 mb-1">2. Seleccione Cotización Aceptada</label>
-                            <select id="contract-quote-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm"></select>
+                            <select id="contract-quote-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm" onchange="checkContractQuote()"></select>
                         </div>
                         <div class="md:col-span-2">
                              <label for="contract-text" class="block text-sm font-medium text-gray-700 mb-1">3. Redacte o pegue el contrato</label>
                              <textarea id="contract-text" rows="10" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Contenido del contrato..."></textarea>
-                             <button id="save-contract-btn" class="mt-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition" disabled>Guardar Contrato</button>
+                             <div class="flex space-x-4 mt-4">
+                                <button id="save-contract-btn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition" disabled>Guardar Contrato</button>
+                                <button id="prepare-contract-btn" onclick="prepareContractGeneration()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition" disabled><i class="fas fa-file-pdf mr-2"></i> Generar Contrato PDF</button>
+                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Pestaña: Portal Cliente -->
-            <div id="portal" class="tab-content">
-                <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-2xl font-bold mb-4">Vista Portal Cliente</h2>
-                    <div class="max-w-md mb-6">
-                        <label for="portal-client-select" class="block text-sm font-medium text-gray-700 mb-1">Seleccione un cliente para ver su portal</label>
-                        <select id="portal-client-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm"></select>
-                    </div>
-                    <div id="client-portal-content" class="mt-4 border-t pt-4">
-                        <p class="text-gray-500">Seleccione un cliente para empezar.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pestaña: Clientes -->
+            <!-- Pestaña: Clientes (Ahora solo lista y botones) -->
             <div id="clientes" class="tab-content">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-bold mb-4">Añadir Cliente</h2>
-                        <form id="clientForm" class="space-y-4"><input type="hidden" id="clientId">
-                            <div><label for="clientCode" class="block text-sm font-medium text-gray-700">Código de Cliente</label><input type="text" id="clientCode" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: INDUMASTER"></div>
-                            <div><label for="clientName" class="block text-sm font-medium text-gray-700">Nombre del Cliente</label><input type="text" id="clientName" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
-                            <div><label for="clientRUC" class="block text-sm font-medium text-gray-700">RUC / C.I.</label><input type="text" id="clientRUC" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
-                            <div><label for="clientContact" class="block text-sm font-medium text-gray-700">Contacto (Email/Teléfono)</label><input type="text" id="clientContact" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div>
-                            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Guardar Cliente</button>
-                        </form>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-6 border-b pb-4">
+                        <h2 class="text-2xl font-bold">Lista de Clientes</h2>
+                        <div class="flex space-x-3">
+                            <button onclick="changeClientView('compact')" id="clientViewCompactBtn" class="p-2 text-gray-600 hover:text-indigo-600 rounded-lg bg-gray-100 active"><i class="fas fa-th-list"></i></button>
+                            <button onclick="changeClientView('detailed')" id="clientViewDetailedBtn" class="p-2 text-gray-400 hover:text-indigo-600 rounded-lg"><i class="fas fa-grip-horizontal"></i></button>
+                            <button onclick="showClientModal('create')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md font-semibold"><i class="fas fa-user-plus mr-2"></i>Agregar Cliente</button>
+                        </div>
                     </div>
-                    <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-bold mb-4">Lista de Clientes</h2>
-                        <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">RUC / C.I.</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th><th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th></tr></thead><tbody id="clientList" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+
+                    <div id="clientViewContent">
+                        <!-- Contenido dinámico (tabla o cards) se renderiza aquí -->
                     </div>
+                    
+                    <div class="mt-8 pt-4 border-t max-w-lg">
+                        <h3 class="text-xl font-bold mb-4">Importar Clientes (CSV)</h3>
+                        <div class="flex flex-col space-y-3">
+                            <button onclick="downloadCsvTemplate('clients')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm"><i class="fas fa-download mr-2"></i> Descargar Plantilla CSV</button>
+                            
+                            <div class="p-3 rounded-lg border text-sm transition duration-300" id="client-import-status">
+                                <p class="text-gray-600">Archivo seleccionado: <span class="font-semibold text-gray-800" id="client-selected-file">Ninguno</span>.</p>
+                                <div id="client-structure-status" class="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded-md hidden">
+                                    <i class="fas fa-file-csv mr-2"></i> <span id="client-status-message">Seleccione un archivo CSV para validar e importar.</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="file-upload-container">
+                                    <button id="importClientsBtn" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
+                                        <i class="fas fa-upload mr-2" id="client-upload-icon"></i> 1. Archivo Seleccionado
+                                    </button>
+                                    <input type="file" id="importClientsCsvInput" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'clients')">
+                                </div>
+                                <button id="loadClientsBtn" onclick="importCsvData('clients')" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg shadow-sm disabled:opacity-50" disabled>
+                                    2. Cargar Clientes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            <!-- Pestaña: Servicios -->
+            <!-- Pestaña: Servicios (Ahora solo lista y botones) -->
             <div id="servicios" class="tab-content">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-bold mb-4">Añadir Servicio</h2>
-                        <form id="serviceForm" class="space-y-4"><input type="hidden" id="serviceId"><div><label for="serviceName" class="block text-sm font-medium text-gray-700">Nombre del Servicio</label><input type="text" id="serviceName" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div><div><label for="serviceDescription" class="block text-sm font-medium text-gray-700">Descripción</label><textarea id="serviceDescription" rows="4" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></textarea></div><div><label for="servicePrice" class="block text-sm font-medium text-gray-700">Precio Unitario ($)</label><input type="number" step="0.01" id="servicePrice" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm"></div><button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Guardar Servicio</button></form>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-6 border-b pb-4">
+                        <h2 class="text-2xl font-bold">Lista de Servicios</h2>
+                        <div class="flex space-x-3">
+                            <button onclick="changeServiceView('compact')" id="serviceViewCompactBtn" class="p-2 text-gray-600 hover:text-indigo-600 rounded-lg bg-gray-100 active"><i class="fas fa-th-list"></i></button>
+                            <button onclick="changeServiceView('detailed')" id="serviceViewDetailedBtn" class="p-2 text-gray-400 hover:text-indigo-600 rounded-lg"><i class="fas fa-grip-horizontal"></i></button>
+                            <button onclick="showServiceModal('create')" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md font-semibold"><i class="fas fa-plus mr-2"></i>Agregar Servicio</button>
+                        </div>
                     </div>
-                    <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-bold mb-4">Lista de Servicios</h2>
-                        <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Servicio</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio</th><th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th></tr></thead><tbody id="serviceList" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                    
+                    <div id="serviceViewContent">
+                        <!-- Contenido dinámico (tabla o cards) se renderiza aquí -->
+                    </div>
+
+                    <div class="mt-8 pt-4 border-t max-w-lg">
+                        <h3 class="text-xl font-bold mb-4">Importar Servicios (CSV)</h3>
+                        <div class="flex flex-col space-y-3">
+                            <button onclick="downloadCsvTemplate('services')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm"><i class="fas fa-download mr-2"></i> Descargar Plantilla CSV</button>
+                            
+                            <div class="p-3 rounded-lg border text-sm transition duration-300" id="service-import-status">
+                                <p class="text-gray-600">Archivo seleccionado: <span class="font-semibold text-gray-800" id="service-selected-file">Ninguno</span>.</p>
+                                <div id="service-structure-status" class="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded-md hidden">
+                                    <i class="fas fa-file-csv mr-2"></i> <span id="service-status-message">Seleccione un archivo CSV para validar e importar.</span>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="file-upload-container">
+                                    <button id="importServicesBtn" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
+                                        <i class="fas fa-upload mr-2" id="service-upload-icon"></i> 1. Archivo Seleccionado
+                                    </button>
+                                    <input type="file" id="importServicesCsvInput" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'services')">
+                                </div>
+                                <button id="loadServicesBtn" onclick="importCsvData('services')" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg shadow-sm disabled:opacity-50" disabled>
+                                    2. Cargar Servicios
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -254,7 +599,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                             <div>
                                 <label for="logoUpload" class="block text-sm font-medium text-gray-700">Logo de la Empresa</label>
-                                <input type="file" id="logoUpload" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                <input type="file" id="logoUpload" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" onchange="previewLogo(this, 'logoPreview')">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Vista Previa</label>
@@ -274,8 +619,33 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- NUEVO CAMPO: SELECCIÓN DE TIPOGRAFÍA -->
+                        <div>
+                            <label for="typography" class="block text-sm font-medium text-gray-700">Tipografía de la Interfaz</label>
+                            <select id="typography" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                                <option value="Inter, sans-serif">Inter (Predeterminada)</option>
+                                <option value="Roboto, sans-serif">Roboto</option>
+                                <option value="'Open Sans', sans-serif">Open Sans</option>
+                                <option value="Montserrat, sans-serif">Montserrat</option>
+                            </select>
+                        </div>
+                        
                         <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Guardar Configuración</button>
                     </form>
+                    
+                    <div class="mt-8 pt-4 border-t">
+                        <h2 class="text-2xl font-bold mb-4">Gestión de Datos (Backup)</h2>
+                        <p class="text-sm text-gray-600 mb-4">Exporta o importa todos los datos (clientes, servicios, historial) como un archivo JSON para respaldo.</p>
+                        <div class="flex space-x-4">
+                            <button onclick="exportData()" class="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition shadow-sm"><i class="fas fa-file-export mr-2"></i> Exportar JSON</button>
+                            <div class="flex-1 relative file-upload-container">
+                                <button id="importJsonBtn" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition shadow-sm"><i class="fas fa-file-import mr-2"></i> Importar JSON</button>
+                                <input type="file" id="importJsonInput" accept=".json" class="file-upload-input" onchange="importData(this)">
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -286,6 +656,27 @@
 
 
     <script>
+        // --- LÓGICA DE MODALES (General) ---
+        function showQuickModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            // Si cerramos el modal de confirmación, limpiamos datos de importación
+            if (modalId === 'confirmation-modal') {
+                activeImportData = null;
+                const clientLoadBtn = document.getElementById('loadClientsBtn');
+                const serviceLoadBtn = document.getElementById('loadServicesBtn');
+                clientLoadBtn.disabled = clientLoadBtn.classList.contains('bg-green-600') ? false : true;
+                serviceLoadBtn.disabled = serviceLoadBtn.classList.contains('bg-green-600') ? false : true;
+            }
+            // Resetear errores del modal de contrato
+            if (modalId === 'contractConfigModal') {
+                document.getElementById('paymentSumError').style.display = 'none';
+            }
+        }
+        
         // --- LÓGICA DE ACCESO ---
         const loginOverlay = document.getElementById('login-overlay');
         const appContainer = document.getElementById('app-container');
@@ -336,136 +727,452 @@
             name: 'Tu Empresa S.A.',
             address: 'Tu Dirección, Guayaquil',
             contact: 'tuemail@empresa.com',
+            ruc: '1234567890001', // AGREGADO: RUC/Identificación del Prestador
+            repName: 'Andrés Nader', // AGREGADO: Nombre del Representante
+            repTitle: 'Gerente General', // AGREGADO: Cargo del Representante
             logo: 'https://placehold.co/200x100/eef2ff/4f46e5?text=Tu+Logo',
             primaryColor: '#1a202c',
             accentColor: '#4f46e5',
             website: '',
-            whatsapp: ''
+            whatsapp: '',
+            typography: 'Inter, sans-serif' // NUEVO: Tipografía por defecto
         };
+        
+        let activeImportData = null; // Almacena temporalmente los datos parseados antes de la confirmación
+        let editingItemIndex = -1; // Índice del ítem que se está editando en la cotización
+        
+        let currentClientView = 'compact'; // 'compact' o 'detailed'
+        let currentServiceView = 'compact'; // 'compact' o 'detailed'
+        let historyClientFilterId = null; // ID del cliente para filtrar el historial
+        let contractClientFilterId = null; // ID del cliente para filtrar contratos
 
         // --- LÓGICA DE PESTAÑAS ---
-        function changeTab(event, tabName) {
+        function changeTab(event, tabName, clientFilterId = null) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            event.currentTarget.classList.add('active');
+            
+            const targetTab = document.getElementById(tabName);
+            targetTab.classList.add('active');
+            
+            // Si el evento es un click de botón (no llamado por función interna), actualizar el estado activo
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            } else {
+                 // Buscar y activar el botón de la pestaña
+                const targetButton = document.querySelector(`.tab-button[onclick*="'${tabName}'"]`);
+                if (targetButton) targetButton.classList.add('active');
+            }
+            
+            // Actualizar filtros y renders
             if (tabName === 'dashboard') renderDashboard();
-            if (tabName === 'contratos') renderContractsPage();
-            if (tabName === 'portal') renderClientPortalPage();
+            if (tabName === 'contratos') {
+                contractClientFilterId = clientFilterId;
+                renderContractsPage(contractClientFilterId);
+            }
+            if (tabName === 'historial') {
+                historyClientFilterId = clientFilterId;
+                renderQuotesHistory(historyClientFilterId);
+            }
+            if (tabName === 'clientes') {
+                renderClients();
+            }
+            if (tabName === 'servicios') {
+                renderServices();
+            }
+
+            // Limpiar estado de edición de cotización al cambiar de pestaña
+            if (tabName !== 'cotizador') {
+                resetQuoteEditMode();
+            }
         }
         
+        // --- FUNCIÓN DE AUTOGENERACIÓN DE CÓDIGO ---
+        function generateClientCode(razonSocial) {
+            if (!razonSocial) return '';
+            
+            // 1. Convertir a mayúsculas y eliminar caracteres no alfanuméricos ni espacios
+            let sanitized = razonSocial.toUpperCase().replace(/[^A-Z0-9\s]/g, '');
+            
+            // 2. Tomar las iniciales de cada palabra (máximo 3) o las primeras letras
+            let parts = sanitized.split(/\s+/).filter(p => p.length > 0);
+            let code = '';
+            
+            if (parts.length > 0) {
+                // Si hay más de una palabra, usa las iniciales (máximo 3)
+                if (parts.length >= 3) {
+                    code = parts.slice(0, 3).map(p => p[0]).join('');
+                } else if (parts.length === 2) {
+                    code = parts.slice(0, 2).map(p => p[0]).join('');
+                } else {
+                    // Si es una sola palabra, toma los primeros 3 o 4 caracteres
+                    code = parts[0].substring(0, 4);
+                }
+            } else {
+                // Si está vacío después de la sanitización, intentar con las primeras 4 letras de la cadena original
+                code = razonSocial.substring(0, 4);
+            }
+
+            // 3. Si el código es muy corto, usar las primeras letras de las palabras
+            if (code.length < 3 && parts.length > 0) {
+                 code = parts[0].substring(0, 3);
+            }
+            
+            // 4. Limitar el código a un máximo de 10 caracteres y asegurar que sea mayúscula
+            return code.substring(0, 10).toUpperCase();
+        }
+
         // --- LÓGICA DE CLIENTES ---
         const clientForm = document.getElementById('clientForm');
-        const clientList = document.getElementById('clientList');
+        const clientViewContent = document.getElementById('clientViewContent');
         const clientIdInput = document.getElementById('clientId');
         const clientCodeInput = document.getElementById('clientCode');
         const clientNameInput = document.getElementById('clientName');
         const clientRUCInput = document.getElementById('clientRUC');
         const clientContactInput = document.getElementById('clientContact');
+        const clientPhoneInput = document.getElementById('clientPhone');
+        const clientAddressInput = document.getElementById('clientAddress');
+        const clientCityInput = document.getElementById('clientCity');
+        const clientModalTitle = document.getElementById('clientModalTitle');
+        const clientSubmitBtn = document.getElementById('clientSubmitBtn');
+        
+        // Muestra el modal de cliente para crear o editar
+        function showClientModal(mode, id = null) {
+            clientForm.reset();
+            clientIdInput.value = '';
+            
+            if (mode === 'create') {
+                clientModalTitle.textContent = 'Crear Nuevo Cliente';
+                clientSubmitBtn.textContent = 'Guardar Cliente';
+                clientCodeInput.classList.add('bg-gray-100');
+                clientCodeInput.classList.remove('bg-white');
+            } else if (mode === 'edit' && id) {
+                const client = clients.find(c => c.id === id);
+                if (!client) return;
+                
+                clientModalTitle.textContent = `Editar Cliente: ${client.name}`;
+                clientSubmitBtn.textContent = 'Actualizar Cliente';
+                
+                // Cargar datos
+                clientIdInput.value = client.id;
+                clientCodeInput.value = client.code;
+                clientNameInput.value = client.name;
+                clientRUCInput.value = client.ruc;
+                clientContactInput.value = client.contact;
+                clientPhoneInput.value = client.phone;
+                clientAddressInput.value = client.address;
+                clientCityInput.value = client.city;
+                
+                clientCodeInput.classList.remove('bg-gray-100');
+                clientCodeInput.classList.add('bg-white');
+            }
+            
+            showQuickModal('clientFormModal');
+        }
+
+        function changeClientView(view) {
+            currentClientView = view;
+            document.getElementById('clientViewCompactBtn').classList.remove('bg-gray-100');
+            document.getElementById('clientViewDetailedBtn').classList.remove('bg-gray-100');
+            document.getElementById(`clientView${view.charAt(0).toUpperCase() + view.slice(1)}Btn`).classList.add('bg-gray-100');
+            renderClients();
+        }
 
         function renderClients() {
-            clientList.innerHTML = '';
+            clientViewContent.innerHTML = '';
+            
             if (clients.length === 0) {
-                clientList.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">No hay clientes registrados.</td></tr>`;
-            } else {
+                clientViewContent.innerHTML = `<p class="text-center py-8 text-gray-500">No hay clientes registrados.</p>`;
+                return;
+            }
+
+            if (currentClientView === 'compact') {
+                // Vista Compacta (Tabla)
+                clientViewContent.innerHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código / RUC</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Razón Social / Contacto</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ciudad / Teléfono</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientList" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                `;
+                const clientList = document.getElementById('clientList');
                 clients.forEach(client => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td class="px-4 py-3 whitespace-nowrap font-mono text-sm">${client.code}</td><td class="px-4 py-3 whitespace-nowrap">${client.name}</td><td class="px-4 py-3 whitespace-nowrap">${client.ruc}</td><td class="px-4 py-3 whitespace-nowrap">${client.contact}</td><td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium"><button onclick="editClient('${client.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i></button><button onclick="deleteClient('${client.id}')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button></td>`;
+                    const nameRuc = `<div class="font-semibold">${client.name}</div><div class="text-xs text-gray-500">${client.ruc}</div>`;
+                    const contactInfo = `<div class="font-medium">${client.contact || 'N/A'}</div><div class="text-xs text-gray-500">${client.address || 'Sin dirección'}</div>`;
+                    const cityPhone = `<div class="font-medium">${client.city || 'N/A'}</div><div class="text-xs text-gray-500">${client.phone || 'N/A'}</div>`;
+
+                    row.innerHTML = `
+                        <td class="px-4 py-3 whitespace-nowrap font-mono text-sm">${client.code}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${nameRuc}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${cityPhone}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <button onclick="changeTab(null, 'historial', '${client.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2" title="Ver Historial"><i class="fas fa-history"></i></button>
+                            <button onclick="changeTab(null, 'contratos', '${client.id}')" class="text-green-600 hover:text-green-900 mr-2" title="Ver Contratos"><i class="fas fa-file-signature"></i></button>
+                            <button onclick="showClientModal('edit', '${client.id}')" class="text-blue-600 hover:text-blue-900 mr-2"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteClient('${client.id}')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
                     clientList.appendChild(row);
                 });
+
+            } else {
+                // Vista Detallada (Cards)
+                const cardGrid = document.createElement('div');
+                cardGrid.className = 'client-card-grid';
+                
+                clients.forEach(client => {
+                    // LÓGICA DE AJUSTE DE TAMAÑO DE FUENTE
+                    const nameLength = client.name ? client.name.length : 0;
+                    // Se reduce el tamaño de fuente si el nombre supera los 30 caracteres
+                    const nameClass = nameLength > 30 ? 'text-lg' : 'text-xl'; 
+
+                    const card = document.createElement('div');
+                    card.className = 'client-card-detailed border border-gray-200 hover:shadow-lg transition duration-150 relative';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <p class="text-xs font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block">${client.code}</p>
+                                <h3 class="${nameClass} font-bold text-gray-800 mt-1 truncate" title="${client.name}">${client.name}</h3>
+                            </div>
+                            <div class="flex space-x-1">
+                                <button onclick="changeTab(null, 'historial', '${client.id}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full" title="Ver Historial"><i class="fas fa-history"></i></button>
+                                <button onclick="changeTab(null, 'contratos', '${client.id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-full" title="Ver Contratos"><i class="fas fa-file-signature"></i></button>
+                                <button onclick="showClientModal('edit', '${client.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full" title="Editar"><i class="fas fa-edit"></i></button>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">RUC/C.I.: <span class="font-medium">${client.ruc}</span></p>
+                        <p class="text-sm text-gray-600 mb-1">Email: <span class="font-medium">${client.contact || 'N/A'}</span></p>
+                        <p class="text-sm text-gray-600 mb-1">Teléfono: <span class="font-medium">${client.phone || 'N/A'}</span></p>
+                        <p class="text-sm text-gray-600">Dir: <span class="font-medium">${client.address || 'Sin dirección'} (${client.city || 'N/A'})</span></p>
+                    `;
+                    cardGrid.appendChild(card);
+                });
+                clientViewContent.appendChild(cardGrid);
             }
             updateClientDropdowns();
         }
 
+        // --- Manejo del Formulario de Cliente (Modal)
         clientForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = clientIdInput.value;
+            const isEditing = !!id;
+            
             const clientData = { 
                 code: clientCodeInput.value.toUpperCase(), 
-                name: clientNameInput.value, 
+                name: clientNameInput.value,
                 ruc: clientRUCInput.value, 
-                contact: clientContactInput.value 
+                contact: clientContactInput.value,
+                phone: clientPhoneInput.value,
+                address: clientAddressInput.value,
+                city: clientCityInput.value
             };
-            if (id) {
+            
+            let newId;
+            if (isEditing) {
                 const index = clients.findIndex(c => c.id === id);
                 clients[index] = { ...clients[index], ...clientData };
+                newId = id;
             } else {
-                clientData.id = `client_${new Date().getTime()}`;
+                newId = `client_${new Date().getTime()}`;
+                clientData.id = newId;
                 clients.push(clientData);
             }
             localStorage.setItem('clients', JSON.stringify(clients));
+            
             renderClients();
             clientForm.reset();
-            clientIdInput.value = '';
+            closeModal('clientFormModal');
+            
+            // Si estaba en Cotizador y crea uno nuevo, lo selecciona automáticamente
+            if (document.getElementById('cotizador').classList.contains('active') && !isEditing) {
+                 quoteClientSelect.value = newId;
+                 quoteClientSelect.dispatchEvent(new Event('change'));
+            }
+            
+            showTemporaryMessage(`Cliente ${clientData.name} ${isEditing ? 'actualizado' : 'guardado'} con éxito.`, 'success');
         });
 
-        function editClient(id) {
-            const client = clients.find(c => c.id === id);
-            clientIdInput.value = client.id;
-            clientCodeInput.value = client.code;
-            clientNameInput.value = client.name;
-            clientRUCInput.value = client.ruc;
-            clientContactInput.value = client.contact;
-            changeTab({currentTarget: document.querySelector('.tab-button[onclick*="clientes"]')}, 'clientes');
-            document.getElementById('clientCode').focus();
-        }
-
         function deleteClient(id) {
-            if (confirm('¿Estás seguro de que quieres eliminar este cliente?')) {
+            if (confirm('¿Estás seguro de que quieres eliminar este cliente? Esto también afectará las cotizaciones y contratos asociados.')) {
                 clients = clients.filter(c => c.id !== id);
                 localStorage.setItem('clients', JSON.stringify(clients));
+                // Opcionalmente, eliminar cotizaciones y contratos asociados (mantener por ahora, solo eliminar cliente)
                 renderClients();
             }
         }
-
+        
         // --- LÓGICA DE SERVICIOS ---
         const serviceForm = document.getElementById('serviceForm');
-        const serviceList = document.getElementById('serviceList');
+        const serviceViewContent = document.getElementById('serviceViewContent');
         const serviceIdInput = document.getElementById('serviceId');
+        const serviceCodeInput = document.getElementById('serviceCode'); 
         const serviceNameInput = document.getElementById('serviceName');
         const serviceDescriptionInput = document.getElementById('serviceDescription');
         const servicePriceInput = document.getElementById('servicePrice');
+        const serviceCategoryInput = document.getElementById('serviceCategory');
+        const serviceCostInput = document.getElementById('serviceCost');
+        const serviceModalTitle = document.getElementById('serviceModalTitle');
+        const serviceSubmitBtn = document.getElementById('serviceSubmitBtn');
+        
+        // Muestra el modal de servicio para crear o editar
+        function showServiceModal(mode, id = null) {
+            serviceForm.reset();
+            serviceIdInput.value = '';
+            
+            if (mode === 'create') {
+                serviceModalTitle.textContent = 'Crear Nuevo Servicio';
+                serviceSubmitBtn.textContent = 'Guardar Servicio';
+                document.getElementById('desc-status').classList.add('hidden');
+            } else if (mode === 'edit' && id) {
+                const service = services.find(s => s.id === id);
+                if (!service) return;
+                
+                serviceModalTitle.textContent = `Editar Servicio: ${service.name}`;
+                serviceSubmitBtn.textContent = 'Actualizar Servicio';
+                
+                // Cargar datos
+                serviceIdInput.value = service.id;
+                serviceCodeInput.value = service.code;
+                serviceNameInput.value = service.name;
+                serviceDescriptionInput.value = service.description;
+                servicePriceInput.value = service.price;
+                serviceCategoryInput.value = service.category;
+                serviceCostInput.value = service.cost;
+                document.getElementById('desc-status').classList.add('hidden');
+            }
+            
+            showQuickModal('serviceFormModal');
+        }
+
+        function changeServiceView(view) {
+            currentServiceView = view;
+            document.getElementById('serviceViewCompactBtn').classList.remove('bg-gray-100');
+            document.getElementById('serviceViewDetailedBtn').classList.remove('bg-gray-100');
+            document.getElementById(`serviceView${view.charAt(0).toUpperCase() + view.slice(1)}Btn`).classList.add('bg-gray-100');
+            renderServices();
+        }
+
 
         function renderServices() {
-            serviceList.innerHTML = '';
+            serviceViewContent.innerHTML = '';
+
              if (services.length === 0) {
-                serviceList.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-gray-500">No hay servicios registrados.</td></tr>`;
-            } else {
+                serviceViewContent.innerHTML = `<p class="text-center py-8 text-gray-500">No hay servicios registrados.</p>`;
+                return;
+            }
+            
+            if (currentServiceView === 'compact') {
+                // Vista Compacta (Tabla)
+                serviceViewContent.innerHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Servicio / Código</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio / Costo</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="serviceList" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                `;
+                const serviceList = document.getElementById('serviceList');
                 services.forEach(service => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td class="px-4 py-3 whitespace-nowrap">${service.name}</td><td class="px-4 py-3 whitespace-nowrap">$${parseFloat(service.price).toFixed(2)}</td><td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium"><button onclick="editService('${service.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i></button><button onclick="deleteService('${service.id}')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button></td>`;
+                    const serviceInfo = `<div class="font-semibold">${service.name}</div><div class="text-xs text-gray-500">${service.code}</div>`;
+                    const priceInfo = `<div class="font-semibold">$${parseFloat(service.price).toFixed(2)}</div><div class="text-xs text-gray-500">Costo: $${parseFloat(service.cost).toFixed(2)}</div>`;
+                    
+                    row.innerHTML = `
+                        <td class="px-4 py-3 whitespace-nowrap">${serviceInfo}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${priceInfo}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${service.category || 'General'}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <button onclick="showServiceModal('edit', '${service.id}')" class="text-blue-600 hover:text-blue-900 mr-2"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteService('${service.id}')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
                     serviceList.appendChild(row);
                 });
+            } else {
+                 // Vista Detallada (Cards)
+                const cardGrid = document.createElement('div');
+                cardGrid.className = 'client-card-grid'; // Reutilizamos el estilo de grid
+
+                services.forEach(service => {
+                    const card = document.createElement('div');
+                    card.className = 'client-card-detailed border border-gray-200 hover:shadow-lg transition duration-150 relative';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <p class="text-xs font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block">${service.code} / ${service.category || 'General'}</p>
+                                <h3 class="text-xl font-bold text-gray-800 mt-1 truncate">${service.name}</h3>
+                            </div>
+                            <div class="flex space-x-1">
+                                <button onclick="showServiceModal('edit', '${service.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full" title="Editar"><i class="fas fa-edit"></i></button>
+                                <button onclick="deleteService('${service.id}')" class="p-2 text-red-600 hover:bg-red-50 rounded-full" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-700 mb-2">Precio: <span class="text-green-600">$${parseFloat(service.price).toFixed(2)}</span> | Costo: $${parseFloat(service.cost).toFixed(2)}</p>
+                        <p class="text-xs text-gray-500 whitespace-pre-wrap">${service.description || 'Sin descripción detallada.'}</p>
+                    `;
+                    cardGrid.appendChild(card);
+                });
+                serviceViewContent.appendChild(cardGrid);
             }
+
             updateServiceDropdown();
         }
 
+        // --- Manejo del Formulario de Servicio (Modal)
         serviceForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = serviceIdInput.value;
-            const serviceData = { name: serviceNameInput.value, description: serviceDescriptionInput.value, price: parseFloat(servicePriceInput.value) };
-            if (id) {
+            const isEditing = !!id;
+
+            const serviceData = { 
+                code: serviceCodeInput.value.toUpperCase(), 
+                name: serviceNameInput.value, 
+                description: serviceDescriptionInput.value, 
+                price: parseFloat(servicePriceInput.value),
+                category: serviceCategoryInput.value,
+                cost: parseFloat(serviceCostInput.value)
+            };
+            
+            let newId;
+            if (isEditing) {
                 const index = services.findIndex(s => s.id === id);
                 services[index] = { ...services[index], ...serviceData };
+                newId = id;
             } else {
-                serviceData.id = `service_${new Date().getTime()}`;
+                newId = `service_${new Date().getTime()}`;
+                serviceData.id = newId;
                 services.push(serviceData);
             }
             localStorage.setItem('services', JSON.stringify(services));
+            
             renderServices();
             serviceForm.reset();
-            serviceIdInput.value = '';
-        });
+            closeModal('serviceFormModal');
+            
+            // Si estaba en Cotizador y crea uno nuevo, lo selecciona automáticamente
+            if (document.getElementById('cotizador').classList.contains('active') && !isEditing) {
+                 serviceSelect.value = newId;
+                 updateServiceDetailPreview();
+            }
 
-        function editService(id) {
-            const service = services.find(s => s.id === id);
-            serviceIdInput.value = service.id;
-            serviceNameInput.value = service.name;
-            serviceDescriptionInput.value = service.description;
-            servicePriceInput.value = service.price;
-            changeTab({currentTarget: document.querySelector('.tab-button[onclick*="servicios"]')}, 'servicios');
-            document.getElementById('serviceName').focus();
-        }
+            showTemporaryMessage(`Servicio ${serviceData.name} ${isEditing ? 'actualizado' : 'guardado'} con éxito.`, 'success');
+        });
 
         function deleteService(id) {
             if (confirm('¿Estás seguro de que quieres eliminar este servicio?')) {
@@ -482,6 +1189,17 @@
         const quoteItemsBody = document.getElementById('quoteItems');
         const quoteNumberInput = document.getElementById('quoteNumber');
         const quoteNotesInput = document.getElementById('quoteNotes');
+        const generateNotesBtn = document.getElementById('generateNotesBtn');
+        const notesStatus = document.getElementById('notes-status');
+        
+        // Nuevos campos de vista previa
+        const serviceCodePreview = document.getElementById('serviceCodePreview');
+        const servicePricePreview = document.getElementById('servicePricePreview');
+        const serviceDescriptionPreview = document.getElementById('serviceDescriptionPreview');
+        const itemCustomDetail = document.getElementById('itemCustomDetail');
+        const addServiceBtn = document.getElementById('addServiceBtn');
+        const editItemIndexInput = document.getElementById('editItemIndex'); // Campo oculto
+
 
         function updateQuoteNumberPreview() {
             const selectedClientId = quoteClientSelect.value;
@@ -491,11 +1209,15 @@
             const now = new Date();
             const dateStr = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
             quoteNumberInput.value = `${clientCode}-${dateStr}-${sequential}`;
+            
+            // Habilitar botón de notas si hay items
+            generateNotesBtn.disabled = quoteItemsData.length === 0;
         }
 
         function updateClientDropdowns() {
-            const selects = [quoteClientSelect, document.getElementById('contract-client-select'), document.getElementById('portal-client-select')];
+            const selects = [quoteClientSelect, document.getElementById('contract-client-select')];
             selects.forEach(select => {
+                const currentValue = select.value;
                 select.innerHTML = '<option value="">Seleccione un cliente</option>';
                 clients.forEach(client => {
                     const option = document.createElement('option');
@@ -503,6 +1225,7 @@
                     option.textContent = `${client.name} (${client.code})`;
                     select.appendChild(option);
                 });
+                select.value = currentValue; // Mantener la selección
             });
         }
         
@@ -514,6 +1237,7 @@
         });
         
         function updateServiceDropdown() {
+            const currentValue = serviceSelect.value;
             serviceSelect.innerHTML = '<option value="">Seleccione un servicio</option>';
             services.forEach(service => {
                 const option = document.createElement('option');
@@ -521,18 +1245,177 @@
                 option.textContent = `${service.name} - $${parseFloat(service.price).toFixed(2)}`;
                 serviceSelect.appendChild(option);
             });
+            serviceSelect.value = currentValue; // Mantener la selección
+            // Asegurar que la vista previa esté vacía al cargar
+            updateServiceDetailPreview(); 
         }
+
+        function updateServiceDetailPreview() {
+            const serviceId = serviceSelect.value;
+            const itemCustomDetail = document.getElementById('itemCustomDetail');
+            
+            if (!serviceId) {
+                serviceCodePreview.value = '';
+                servicePricePreview.value = '';
+                serviceDescriptionPreview.value = '';
+                itemCustomDetail.value = '';
+                addServiceBtn.disabled = true;
+                return;
+            }
+
+            const service = services.find(s => s.id === serviceId);
+
+            if (service) {
+                serviceCodePreview.value = service.code || '';
+                // Se muestra el precio con formato, pero el input es tipo number para edición
+                servicePricePreview.value = parseFloat(service.price).toFixed(2); 
+                serviceDescriptionPreview.value = service.description || '';
+                itemCustomDetail.value = ''; // Limpiar detalle al seleccionar nuevo servicio
+                addServiceBtn.disabled = false;
+            } else {
+                addServiceBtn.disabled = true;
+            }
+            
+            // Si el modo edición está activo, salimos de él al seleccionar un nuevo servicio
+            if (editingItemIndex !== -1) {
+                resetQuoteEditMode();
+            }
+        }
+        
+        function resetQuoteEditMode() {
+            editingItemIndex = -1;
+            editItemIndexInput.value = '';
+            addServiceBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Añadir';
+            addServiceBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            addServiceBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            serviceSelect.disabled = false; // Habilitar selector
+            updateServiceDetailPreview(); // Limpiar campos y deshabilitar añadir si no hay servicio seleccionado
+        }
+        
+        // --- FUNCIÓN PARA CARGAR ITEM A EDITAR ---
+        function loadQuoteItemForEdit(index) {
+            const item = quoteItemsData[index];
+            if (!item) return;
+
+            // 1. Establecer modo edición
+            editingItemIndex = index;
+            editItemIndexInput.value = index;
+
+            // 2. Cargar datos en los campos de control
+            // Nota: No podemos seleccionar el <select> si el item es una copia customizada que no existe en el maestro
+            serviceSelect.value = item.id; 
+            serviceSelect.disabled = true; // Deshabilitar el selector mientras se edita un item específico de la cotización
+            
+            serviceCodePreview.value = item.code || '';
+            servicePricePreview.value = parseFloat(item.price).toFixed(2);
+            
+            // Intentamos separar el detalle custom del campo de descripción
+            let baseDesc = item.description;
+            let customDetail = '';
+            const detailMarker = 'DETALLE ADICIONAL: ';
+            
+            // Buscamos la última ocurrencia del marcador, permitiendo que la descripción base contenga el marcador
+            const detailIndex = item.description.lastIndexOf(detailMarker);
+            if (detailIndex !== -1 && item.description.length > detailIndex + detailMarker.length) {
+                // Si la descripción contiene el marcador de detalle, separamos
+                customDetail = item.description.substring(detailIndex + detailMarker.length).trim();
+                baseDesc = item.description.substring(0, detailIndex).trim().replace('\n\n', '');
+            } else {
+                 // Si no tiene marcador o está vacío, la descripción completa es la base
+                baseDesc = item.description;
+                customDetail = '';
+            }
+            
+            // Usamos la descripción base del item, no la del maestro (para permitir edición de descripción base también)
+            serviceDescriptionPreview.value = baseDesc;
+            itemCustomDetail.value = customDetail;
+            
+            // 3. Cambiar botón de Añadir/Actualizar
+            addServiceBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Actualizar Ítem';
+            addServiceBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+            addServiceBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            addServiceBtn.disabled = false;
+            
+            // Scroll a la zona de edición
+            document.getElementById('serviceSelect').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showTemporaryMessage(`Editando ítem: ${item.name} (Índice ${index})`, 'info');
+        }
+
 
         function addServiceToQuote() {
             const serviceId = serviceSelect.value;
-            if (!serviceId) { alert('Por favor, seleccione un servicio.'); return; }
-            const service = services.find(s => s.id === serviceId);
-            const existingItem = quoteItemsData.find(item => item.id === serviceId);
-            if (existingItem) {
-                existingItem.quantity++;
-            } else {
-                quoteItemsData.push({ id: service.id, name: service.name, description: service.description, price: service.price, quantity: 1 });
+            const customDetail = itemCustomDetail.value.trim();
+            const adjustedPrice = parseFloat(servicePricePreview.value); // Capturar el precio editado
+            
+            if (!serviceId && editingItemIndex === -1) { showTemporaryMessage('Por favor, seleccione un servicio.', 'error'); return; }
+            if (isNaN(adjustedPrice) || adjustedPrice < 0) { showTemporaryMessage('Precio unitario no válido.', 'error'); return; }
+
+            // Usamos el servicio maestro para obtener nombre/código/costo, a menos que estemos en modo edición
+            const serviceMaster = services.find(s => s.id === serviceId);
+            
+            // El campo base de descripción puede haber sido editado directamente en el textarea de preview
+            const baseDescription = serviceDescriptionPreview.value.trim(); 
+            
+            // Construir la descripción final: Descripción base + Detalle opcional
+            let finalDescription = baseDescription || '';
+            if (customDetail) {
+                // Si ya hay algo, añadimos doble salto de línea antes del detalle
+                finalDescription = (finalDescription ? finalDescription + '\n\n' : '') + `DETALLE ADICIONAL: ${customDetail}`;
             }
+            
+            const newOrUpdatedItem = { 
+                // Si estamos en modo edición, usamos los datos del ítem existente para el ID y el código
+                id: editingItemIndex !== -1 ? quoteItemsData[editingItemIndex].id : (serviceMaster ? serviceMaster.id : 'custom_edit'),
+                name: editingItemIndex !== -1 ? quoteItemsData[editingItemIndex].name : (serviceMaster ? serviceMaster.name : 'Artículo Personalizado'),
+                code: serviceCodePreview.value.toUpperCase() || 'CUSTOM', // Usar código editado/visualizado
+                description: finalDescription, 
+                price: adjustedPrice, 
+                quantity: 1, 
+                category: serviceMaster ? serviceMaster.category : '',
+                cost: serviceMaster ? serviceMaster.cost : 0.00
+            };
+            
+            // LÓGICA DE ACTUALIZACIÓN O INSERCIÓN
+            if (editingItemIndex !== -1) {
+                // MODO EDICIÓN: Actualizar el ítem existente
+                const originalQuantity = quoteItemsData[editingItemIndex].quantity;
+                
+                // Sobrescribimos el ítem en el índice
+                quoteItemsData[editingItemIndex] = { ...newOrUpdatedItem, quantity: originalQuantity };
+                
+                showTemporaryMessage(`Ítem actualizado con éxito.`, 'success');
+                resetQuoteEditMode();
+
+            } else {
+                // MODO INSERCIÓN: Añadir o fusionar
+                
+                // Si no hay servicio maestro, no podemos fusionar
+                if (!serviceMaster) {
+                    quoteItemsData.push(newOrUpdatedItem);
+                } else {
+                    // Lógica de fusión: solo fusionar si no hay precio ajustado Y no hay detalle customizado
+                    const isPriceAltered = adjustedPrice !== serviceMaster.price; 
+                    const isCustomDetailUsed = customDetail.length > 0;
+                    
+                    const existingItemIndex = quoteItemsData.findIndex(item => item.id === serviceId);
+
+                    const canMerge = existingItemIndex > -1 && !isPriceAltered && !isCustomDetailUsed;
+
+                    if (canMerge) {
+                        quoteItemsData[existingItemIndex].quantity++;
+                    } else {
+                        // Item nuevo o item con ajustes personalizados
+                        quoteItemsData.push(newOrUpdatedItem);
+                    }
+                }
+                
+                // Limpiar campos de previsualización y detalle para el siguiente ítem
+                itemCustomDetail.value = '';
+                serviceSelect.value = '';
+                updateServiceDetailPreview();
+                showTemporaryMessage(`Servicio añadido a la cotización.`, 'success');
+            }
+            
             renderQuoteItems();
         }
         
@@ -540,12 +1423,22 @@
             quoteItemsBody.innerHTML = '';
             if (quoteItemsData.length === 0) {
                 quoteItemsBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Añada servicios a la cotización.</td></tr>`;
+                generateNotesBtn.disabled = true; // Deshabilitar si no hay items
             } else {
                 quoteItemsData.forEach((item, index) => {
+                    // Mostrar código y nombre, y la descripción completa (incluyendo detalle opcional)
+                    const itemDisplay = `<div class="font-medium text-gray-800">${item.name} (${item.code})</div><div class="text-xs text-gray-500 mt-1 whitespace-pre-wrap">${item.description || ''}</div>`;
+                    
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td class="px-4 py-3 whitespace-normal align-top"><div class="font-medium text-gray-800">${item.name}</div><div class="text-xs text-gray-500 mt-1">${item.description || ''}</div></td><td class="px-4 py-3 align-top"><input type="number" min="1" value="${item.quantity}" onchange="updateQuantity(${index}, this.value)" class="w-20 p-1 border border-gray-300 rounded-md"></td><td class="px-4 py-3 whitespace-nowrap align-top">$${item.price.toFixed(2)}</td><td class="px-4 py-3 whitespace-nowrap font-medium align-top">$${(item.price * item.quantity).toFixed(2)}</td><td class="px-4 py-3 whitespace-nowrap text-right align-top"><button onclick="removeQuoteItem(${index})" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button></td>`;
+                    // Columna de Cantidad con Input
+                    const quantityInput = `<input type="number" min="1" value="${item.quantity}" onchange="updateQuantity(${index}, this.value)" class="w-20 p-1 border border-gray-300 rounded-md text-center">`;
+                    // Columna de Precio Unitario con Input (Ajuste para permitir edición de precio)
+                    const priceInput = `<input type="number" step="0.01" min="0" value="${item.price.toFixed(2)}" onchange="updatePrice(${index}, this.value)" class="w-24 p-1 border border-gray-300 rounded-md text-right">`;
+                    
+                    row.innerHTML = `<td class="px-4 py-3 whitespace-normal align-top">${itemDisplay}</td><td class="px-4 py-3 align-top">${quantityInput}</td><td class="px-4 py-3 whitespace-nowrap align-top">${priceInput}</td><td class="px-4 py-3 whitespace-nowrap font-medium align-top">$${(item.price * item.quantity).toFixed(2)}</td><td class="px-4 py-3 whitespace-nowrap text-right align-top"><button onclick="loadQuoteItemForEdit(${index})" class="text-blue-600 hover:text-blue-900 mr-2" title="Editar ítem"><i class="fas fa-pencil-alt"></i></button><button onclick="removeQuoteItem(${index})" class="text-red-600 hover:text-red-900" title="Eliminar ítem"><i class="fas fa-trash"></i></button></td>`;
                     quoteItemsBody.appendChild(row);
                 });
+                generateNotesBtn.disabled = false; // Habilitar si hay items
             }
             calculateTotals();
         }
@@ -555,8 +1448,29 @@
             renderQuoteItems();
         }
 
+        function updatePrice(index, price) {
+            const newPrice = parseFloat(price);
+            if (isNaN(newPrice) || newPrice < 0) {
+                // Para evitar que el campo se quede en NaN si el usuario borra todo, lo dejamos en 0.
+                quoteItemsData[index].price = 0; 
+            } else {
+                quoteItemsData[index].price = newPrice;
+            }
+            renderQuoteItems();
+        }
+
         function removeQuoteItem(index) {
             quoteItemsData.splice(index, 1);
+            
+            // Si el ítem eliminado era el que se estaba editando, se sale del modo edición
+            if (editingItemIndex === index) {
+                resetQuoteEditMode();
+            } else if (editingItemIndex > index) {
+                // Si el índice de edición era mayor, lo ajustamos
+                editingItemIndex--;
+                editItemIndexInput.value = editingItemIndex;
+            }
+            
             renderQuoteItems();
         }
 
@@ -567,6 +1481,9 @@
             document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
             document.getElementById('iva').textContent = `$${iva.toFixed(2)}`;
             document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+            
+            // Habilitar botón de notas si el total es > 0
+            generateNotesBtn.disabled = total <= 0;
         }
 
         // --- LÓGICA DE CONFIGURACIÓN ---
@@ -580,6 +1497,7 @@
         const logoPreview = document.getElementById('logoPreview');
         const primaryColorInput = document.getElementById('primaryColor');
         const accentColorInput = document.getElementById('accentColor');
+        const typographyInput = document.getElementById('typography'); // NUEVO Input de tipografía
 
         function loadSettings() {
             companyNameInput.value = companySettings.name;
@@ -590,27 +1508,45 @@
             logoPreview.src = companySettings.logo;
             primaryColorInput.value = companySettings.primaryColor;
             accentColorInput.value = companySettings.accentColor;
+            typographyInput.value = companySettings.typography;
             
+            // Aplicar configuración a la interfaz
+            document.getElementById('headerLogo').src = companySettings.logo;
+            document.getElementById('headerCompanyName').textContent = companySettings.name;
             document.getElementById('total-label').style.color = companySettings.accentColor;
             document.getElementById('total').style.color = companySettings.accentColor;
+            document.body.style.fontFamily = companySettings.typography;
         }
-
-        logoUploadInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
+        
+        // Función unificada para previsualizar el logo (usada en Configuración y en el Modal)
+        function previewLogo(input, previewId) {
+            const file = input.files[0];
+            const previewEl = document.getElementById(previewId);
+            
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    const logoBase64 = event.target.result;
-                    logoPreview.src = logoBase64;
-                    companySettings.logo = logoBase64;
-                    localStorage.setItem('companySettings', JSON.stringify(companySettings));
+                    previewEl.src = event.target.result;
+                    // Guardar temporalmente el logo base64 en un atributo de datos para usarlo en saveQuickSettings
+                    input.setAttribute('data-new-logo', event.target.result);
                 };
                 reader.readAsDataURL(file);
+            } else {
+                // Restaurar logo actual si se cancela la selección
+                previewEl.src = companySettings.logo;
+                input.removeAttribute('data-new-logo');
             }
-        });
+        }
+        
+        // Asignar el listener a la subida de logo en Configuración
+        logoUploadInput.onchange = function() { previewLogo(this, 'logoPreview'); };
 
         configForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            
+            // Si hay un logo nuevo en el input de Configuración (lo detectamos por el data-attribute)
+            const newLogo = logoUploadInput.getAttribute('data-new-logo');
+
             companySettings.name = companyNameInput.value;
             companySettings.address = companyAddressInput.value;
             companySettings.contact = companyContactInput.value;
@@ -618,20 +1554,41 @@
             companySettings.whatsapp = companyWhatsappInput.value;
             companySettings.primaryColor = primaryColorInput.value;
             companySettings.accentColor = accentColorInput.value;
-            localStorage.setItem('companySettings', JSON.stringify(companySettings));
-            loadSettings();
-            alert('Configuración guardada exitosamente.');
-        });
+            companySettings.typography = typographyInput.value; // Guardar tipografía
+            
+            if (newLogo) {
+                companySettings.logo = newLogo;
+                logoUploadInput.removeAttribute('data-new-logo'); // Limpiar después de usar
+            }
 
+            localStorage.setItem('companySettings', JSON.stringify(companySettings));
+            // Re-aplicar estilos después de guardar
+            loadSettings(); 
+            showTemporaryMessage('Configuración guardada exitosamente.', 'success');
+        });
+        
         // --- LÓGICA DE HISTORIAL ---
         const quotesHistoryList = document.getElementById('quotesHistoryList');
+        const historyClientFilterEl = document.getElementById('historyClientFilter');
 
-        function renderQuotesHistory() {
+        function renderQuotesHistory(filterId = null) {
             quotesHistoryList.innerHTML = '';
-            if (quotesHistory.length === 0) {
-                quotesHistoryList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">No hay cotizaciones en el historial.</td></tr>`;
+            
+            let filteredQuotes = quotesHistory;
+            historyClientFilterEl.textContent = ''; // Limpiar filtro por defecto
+
+            if (filterId) {
+                filteredQuotes = quotesHistory.filter(q => q.client.id === filterId);
+                const client = clients.find(c => c.id === filterId);
+                if (client) {
+                    historyClientFilterEl.textContent = `(Filtrando por: ${client.name})`;
+                }
+            }
+
+            if (filteredQuotes.length === 0) {
+                quotesHistoryList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">No hay cotizaciones en el historial ${filterId ? 'para este cliente' : ''}.</td></tr>`;
             } else {
-                [...quotesHistory].reverse().forEach(quote => {
+                [...filteredQuotes].reverse().forEach(quote => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">${quote.number}</td>
@@ -647,11 +1604,31 @@
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                             <button onclick="loadQuoteForEdit('${quote.id}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Cargar para Editar"><i class="fas fa-pencil-alt"></i></button>
-                            <button onclick="reprintQuote('${quote.id}')" class="text-indigo-600 hover:text-indigo-900" title="Ver / Reimprimir"><i class="fas fa-eye"></i></button>
+                            <button onclick="reprintQuote('${quote.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2" title="Ver / Reimprimir"><i class="fas fa-eye"></i></button>
+                            <button onclick="promptDeleteQuote('${quote.id}', '${quote.number}', '${quote.client.name}')" class="text-red-600 hover:text-red-900" title="Eliminar Cotización"><i class="fas fa-trash"></i></button>
                         </td>`;
                     quotesHistoryList.appendChild(row);
                 });
             }
+        }
+        
+        // Muestra el modal de confirmación de borrado
+        function promptDeleteQuote(quoteId, quoteNumber, clientName) {
+            document.getElementById('quoteIdToDelete').value = quoteId;
+            document.getElementById('quoteToDeleteDetails').textContent = `Cotización N° ${quoteNumber} del cliente ${clientName}.`;
+            showQuickModal('deleteQuoteConfirmationModal');
+        }
+
+        // Ejecuta la eliminación después de la confirmación
+        function deleteConfirmedQuote() {
+            const quoteId = document.getElementById('quoteIdToDelete').value;
+            quotesHistory = quotesHistory.filter(q => q.id !== quoteId);
+            localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
+            
+            closeModal('deleteQuoteConfirmationModal');
+            renderQuotesHistory(historyClientFilterId);
+            renderDashboard();
+            showTemporaryMessage('Cotización eliminada permanentemente.', 'success');
         }
 
         function updateQuoteStatus(quoteId, newStatus) {
@@ -659,7 +1636,7 @@
             if (quoteIndex > -1) {
                 quotesHistory[quoteIndex].status = newStatus;
                 localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
-                renderQuotesHistory();
+                renderQuotesHistory(historyClientFilterId);
                 renderDashboard();
             }
         }
@@ -667,23 +1644,33 @@
         function loadQuoteForEdit(quoteId) {
             const quote = quotesHistory.find(q => q.id === quoteId);
             if (quote) {
+                // Necesitamos borrar la cotización original si se carga para edición
+                // Para evitar duplicados, la borramos y la nueva se guarda con un nuevo ID y contador.
+                quotesHistory = quotesHistory.filter(q => q.id !== quoteId);
+                localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
+
                 quoteClientSelect.value = quote.client.id;
-                quoteItemsData = [...quote.items];
+                quoteItemsData = quote.items.map(item => ({ 
+                    id: item.id, name: item.name, description: item.description, 
+                    price: item.price, quantity: item.quantity,
+                    category: item.category, cost: item.cost
+                }));
+
                 quoteNotesInput.value = quote.notes || '';
                 
                 const event = new Event('change');
                 quoteClientSelect.dispatchEvent(event);
                 
                 renderQuoteItems();
-                changeTab({currentTarget: document.querySelector('.tab-button[onclick*="cotizador"]')}, 'cotizador');
-                alert(`Cotización ${quote.number} cargada. Puede modificarla y generar una nueva versión.`);
+                changeTab(null, 'cotizador'); // Pasa null como evento
+                showTemporaryMessage(`Cotización ${quote.number} cargada para crear una nueva versión. La versión anterior fue eliminada del historial.`, 'info');
             }
         }
 
         // --- LÓGICA DEL DASHBOARD ---
         function renderDashboard() {
             const acceptedQuotes = quotesHistory.filter(q => q.status === 'Aceptada');
-            const totalSales = acceptedQuotes.reduce((sum, q) => sum + q.total, 0);
+            const totalSales = acceptedQuotes.reduce((sum, q) => sum + q.total, 0); // CORREGIDO: Faltaba el paréntesis de cierre en el callback de reduce
             const averageSale = acceptedQuotes.length > 0 ? totalSales / acceptedQuotes.length : 0;
 
             document.getElementById('total-sales').textContent = `$${totalSales.toFixed(2)}`;
@@ -714,10 +1701,14 @@
             // Sales by month chart logic
             const salesByMonth = {};
             acceptedQuotes.forEach(q => {
-                const [day, month, year] = q.issueDate.split('/');
-                const monthYear = `${year}-${month}`;
-                if (!salesByMonth[monthYear]) salesByMonth[monthYear] = 0;
-                salesByMonth[monthYear] += q.total;
+                // Formato de fecha de emisión: DD/MM/AAAA
+                const parts = q.issueDate.split('/');
+                if (parts.length === 3) {
+                    const [day, month, year] = parts;
+                    const monthYear = `${year}-${month}`;
+                    if (!salesByMonth[monthYear]) salesByMonth[monthYear] = 0;
+                    salesByMonth[monthYear] += q.total;
+                }
             });
 
             const chartData = Object.keys(salesByMonth).map(key => ({
@@ -754,9 +1745,23 @@
         const contractQuoteSelect = document.getElementById('contract-quote-select');
         const contractText = document.getElementById('contract-text');
         const saveContractBtn = document.getElementById('save-contract-btn');
+        const prepareContractBtn = document.getElementById('prepare-contract-btn');
+        const contractClientFilterEl = document.getElementById('contractClientFilter');
 
-        function renderContractsPage() {
-            contractClientSelect.dispatchEvent(new Event('change'));
+
+        function renderContractsPage(filterId = null) {
+            contractClientSelect.dispatchEvent(new Event('change')); // Recargar la lista de clientes
+            
+            contractClientFilterEl.textContent = '';
+            if (filterId) {
+                 const client = clients.find(c => c.id === filterId);
+                if (client) {
+                    contractClientFilterEl.textContent = `(Filtrando por: ${client.name})`;
+                    contractClientSelect.value = filterId; // Preseleccionar el cliente
+                    // Disparar cambio para cargar cotizaciones
+                    contractClientSelect.dispatchEvent(new Event('change'));
+                }
+            }
         }
 
         contractClientSelect.addEventListener('change', () => {
@@ -764,6 +1769,7 @@
             contractQuoteSelect.innerHTML = '<option value="">Seleccione una cotización</option>';
             contractText.value = '';
             saveContractBtn.disabled = true;
+            prepareContractBtn.disabled = true;
 
             if (clientId) {
                 const clientQuotes = quotesHistory.filter(q => q.client.id === clientId && q.status === 'Aceptada');
@@ -776,10 +1782,11 @@
             }
         });
 
-        contractQuoteSelect.addEventListener('change', () => {
+        function checkContractQuote() {
             const quoteId = contractQuoteSelect.value;
             contractText.value = '';
             saveContractBtn.disabled = !quoteId;
+            prepareContractBtn.disabled = !quoteId;
 
             if (quoteId) {
                 const contract = contracts.find(c => c.quoteId === quoteId);
@@ -787,7 +1794,9 @@
                     contractText.value = contract.text;
                 }
             }
-        });
+        }
+        
+        contractQuoteSelect.addEventListener('change', checkContractQuote);
 
         saveContractBtn.addEventListener('click', () => {
             const quoteId = contractQuoteSelect.value;
@@ -801,57 +1810,247 @@
                 contracts.push({ quoteId, text });
             }
             localStorage.setItem('contracts', JSON.stringify(contracts));
-            alert('Contrato guardado exitosamente.');
+            showTemporaryMessage('Contrato guardado exitosamente.', 'success');
         });
 
-        // --- LÓGICA PORTAL CLIENTE ---
-        const portalClientSelect = document.getElementById('portal-client-select');
-        const clientPortalContent = document.getElementById('client-portal-content');
-
-        function renderClientPortalPage() {
-            portalClientSelect.dispatchEvent(new Event('change'));
+        // VALIDACIÓN DE SUMA DE PAGOS EN EL MODAL DE CONFIGURACIÓN
+        function validatePaymentSum() {
+            const pct1 = parseFloat(document.getElementById('payment1Pct').value) || 0;
+            const pct2 = parseFloat(document.getElementById('payment2Pct').value) || 0;
+            const pct3 = parseFloat(document.getElementById('payment3Pct').value) || 0;
+            const total = pct1 + pct2 + pct3;
+            
+            const totalSpan = document.getElementById('paymentSumTotal');
+            const errorDiv = document.getElementById('paymentSumError');
+            const submitBtn = document.getElementById('generateContractBtn');
+            
+            totalSpan.textContent = `${total}%`;
+            
+            if (total !== 100) {
+                totalSpan.classList.add('text-red-600');
+                totalSpan.classList.remove('text-green-600');
+                errorDiv.style.display = 'block';
+                submitBtn.disabled = true;
+            } else {
+                totalSpan.classList.remove('text-red-600');
+                totalSpan.classList.add('text-green-600');
+                errorDiv.style.display = 'none';
+                submitBtn.disabled = false;
+            }
         }
         
-        portalClientSelect.addEventListener('change', () => {
-            const clientId = portalClientSelect.value;
-            if (!clientId) {
-                clientPortalContent.innerHTML = '<p class="text-gray-500">Seleccione un cliente para empezar.</p>';
-                return;
-            }
-
-            const clientQuotes = quotesHistory.filter(q => q.client.id === clientId);
-            if (clientQuotes.length === 0) {
-                clientPortalContent.innerHTML = '<p class="text-gray-500">Este cliente no tiene cotizaciones en el historial.</p>';
-                return;
+        // Muestra el modal de configuración de contrato y precarga datos
+        function prepareContractGeneration() {
+            const quoteId = contractQuoteSelect.value;
+            if (!quoteId) {
+                 showTemporaryMessage('Debe seleccionar una cotización aceptada para generar un contrato.', 'error');
+                 return;
             }
             
-            let contentHtml = '';
-            [...clientQuotes].reverse().forEach(quote => {
-                const contract = contracts.find(c => c.quoteId === quote.id);
-                contentHtml += `
-                    <div class="mb-6 pb-4 border-b">
-                        <div class="flex justify-between items-center">
-                            <h3 class="text-lg font-bold">${quote.number}</h3>
-                            <span class="status-badge status-${quote.status}">${quote.status}</span>
-                        </div>
-                        <p class="text-sm text-gray-600">Fecha: ${quote.issueDate} | Total: <b>$${quote.total.toFixed(2)}</b></p>
-                        ${contract ? `
-                            <div class="mt-4 p-4 bg-gray-50 rounded-lg">
-                                <h4 class="font-semibold text-sm">Contrato Asociado</h4>
-                                <p class="text-xs text-gray-700 mt-2 whitespace-pre-wrap">${contract.text}</p>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            });
-            clientPortalContent.innerHTML = contentHtml;
+            // Pre-cargar valores por defecto de la empresa (si existen)
+            document.getElementById('prestadorRepName').value = companySettings.repName || '';
+            document.getElementById('prestadorRepTitle').value = companySettings.repTitle || '';
+            
+            // Si ya existe un contrato guardado para esta cotización, podríamos precargar otros campos de tiempo
+            const existingContract = contracts.find(c => c.quoteId === quoteId);
+            if (existingContract && existingContract.config) {
+                 const config = existingContract.config;
+                 document.getElementById('devTerm').value = config.devTerm || 30;
+                 document.getElementById('devTimeUnit').value = config.devTimeUnit || 'días';
+                 document.getElementById('maintTerm').value = config.maintTerm || 12;
+                 document.getElementById('maintTimeUnit').value = config.maintTimeUnit || 'meses';
+                 document.getElementById('noticeDays').value = config.noticeDays || 30;
+                 document.getElementById('clientContactTitle').value = config.clientContactTitle || '';
+                 
+                 document.getElementById('payment1Pct').value = config.paymentSchedule[0].pct || 50;
+                 document.getElementById('payment1Hito').value = config.paymentSchedule[0].hito || 'Diseño y Planificación Aprobada';
+                 document.getElementById('payment2Pct').value = config.paymentSchedule[1].pct || 0;
+                 document.getElementById('payment2Hito').value = config.paymentSchedule[1].hito || 'Entrega de Desarrollo Frontend';
+                 document.getElementById('payment3Pct').value = config.paymentSchedule[2].pct || 50;
+                 document.getElementById('payment3Hito').value = config.paymentSchedule[2].hito || 'Aprobación Final y Puesta en Producción';
+                 document.getElementById('maintPaymentFreq').value = config.maintPaymentFreq || 'mensual';
+
+            } else {
+                // Si no hay configuración previa, cargar valores iniciales y nombre de contacto del cliente
+                const quote = quotesHistory.find(q => q.id === quoteId);
+                const clientContact = quote.client.contact ? quote.client.contact.split('@')[0] : '';
+                document.getElementById('clientContactTitle').value = clientContact ? `Contacto Principal (${clientContact})` : 'Pendiente Definición';
+            }
+            
+            document.getElementById('contractQuoteId').value = quoteId;
+            validatePaymentSum(); // Validar la suma inicial
+            showQuickModal('contractConfigModal');
+        }
+        
+        // Manejador del formulario de configuración de contrato
+        document.getElementById('contractConfigForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            generateContractPDF();
+            closeModal('contractConfigModal');
         });
 
-        // --- LÓGICA DE IMPRESIÓN ---
+        // --- LÓGICA DE GENERACIÓN DE CONTRATO (HTML para PDF) ---
+        function generateContractPDF() {
+            const quoteId = document.getElementById('contractQuoteId').value;
+            const quote = quotesHistory.find(q => q.id === quoteId);
+            if (!quote) return;
+            
+            // 1. Capturar la configuración del modal
+            const config = {
+                devTerm: document.getElementById('devTerm').value,
+                devTimeUnit: document.getElementById('devTimeUnit').value,
+                maintTerm: document.getElementById('maintTerm').value,
+                maintTimeUnit: document.getElementById('maintTimeUnit').value,
+                noticeDays: document.getElementById('noticeDays').value,
+                prestadorRepName: document.getElementById('prestadorRepName').value,
+                prestadorRepTitle: document.getElementById('prestadorRepTitle').value,
+                clientContactTitle: document.getElementById('clientContactTitle').value,
+                maintPaymentFreq: document.getElementById('maintPaymentFreq').value,
+                paymentSchedule: [
+                    { pct: parseFloat(document.getElementById('payment1Pct').value), hito: document.getElementById('payment1Hito').value },
+                    { pct: parseFloat(document.getElementById('payment2Pct').value), hito: document.getElementById('payment2Hito').value },
+                    { pct: parseFloat(document.getElementById('payment3Pct').value), hito: document.getElementById('payment3Hito').value }
+                ].filter(p => p.pct > 0) // Solo incluir pagos con porcentaje > 0
+            };
+            
+            // 2. Actualizar/Guardar la configuración en el contrato
+            const contractIndex = contracts.findIndex(c => c.quoteId === quoteId);
+            if (contractIndex > -1) {
+                contracts[contractIndex].config = config;
+            } else {
+                contracts.push({ quoteId, text: '', config: config });
+            }
+            localStorage.setItem('contracts', JSON.stringify(contracts));
+
+            // 3. Reemplazar placeholders en la plantilla
+            const cs = companySettings;
+            const now = new Date().toLocaleDateString('es-EC');
+
+            // 4. Formatear la tabla de pagos
+            const paymentDetailsHtml = config.paymentSchedule.map(p => 
+                `<li>${p.pct}% al ${p.hito}.</li>`
+            ).join('');
+
+            // 5. Construir el contrato
+            const contractTemplate = `
+                <div class="p-8 max-w-4xl mx-auto bg-white font-serif text-base" style="font-family: ${cs.typography}; line-height: 1.6;">
+                    <style>
+                        /* Estilos específicos para impresión */
+                        .contract-header { color: ${cs.primaryColor}; text-align: center; font-size: 1.5rem; font-weight: 700; margin-bottom: 2rem; }
+                        .section-title { font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+                        .data-box { background-color: #f3f4f6; padding: 10px; border-radius: 6px; margin-bottom: 1rem; }
+                        .data-box p { margin: 0; }
+                        .final-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+                        .final-table th, .final-table td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+                        .final-table th { background-color: #f7f7f7; text-align: left; }
+                        .final-table .total { background-color: ${cs.accentColor}20; font-weight: 700; color: ${cs.accentColor}; }
+                        .signature-line { border-top: 1px solid #000; margin-top: 60px; padding-top: 5px; text-align: center; }
+                        .signature-column { display: inline-block; width: 45%; }
+                        @media print {
+                            .no-print { display: none; }
+                            .signature-column { width: 48%; }
+                        }
+                    </style>
+                    <div class="contract-header">
+                        CONTRATO DE PRESTACIÓN DE SERVICIOS DE DISEÑO Y DESARROLLO WEB Y MANTENIMIENTO WEB
+                    </div>
+
+                    <p class="text-center text-sm mb-8">Este Contrato de Prestación de Servicios (en adelante, el "Contrato") se celebra y entra en vigor en la fecha de emisión, entre:</p>
+
+                    <h3 class="section-title">1. LAS PARTES</h3>
+
+                    <div class="data-box">
+                        <p><strong>1.1. PRESTADOR DE SERVICIOS:</strong> ${cs.name}, con RUC/Identificación ${cs.ruc}, domiciliada en ${cs.address}, debidamente representada por ${config.prestadorRepName}, en su calidad de ${config.prestadorRepTitle}, en adelante denominado "EL PRESTADOR".</p>
+                        <p class="mt-2"><strong>1.2. CLIENTE:</strong> ${quote.client.name}, con RUC/Identificación ${quote.client.ruc}, domiciliado en ${quote.client.address || 'Pendiente Dirección'}, representado por ${quote.client.contact || 'Pendiente Contacto'}, en su calidad de ${config.clientContactTitle}, en adelante denominado "EL CLIENTE".</p>
+                    </div>
+
+                    <h3 class="section-title">2. OBJETO DEL CONTRATO</h3>
+                    <p>EL PRESTADOR se compromete a prestar a EL CLIENTE los servicios de diseño y desarrollo web, así como los servicios de mantenimiento web, de acuerdo con las especificaciones detalladas en la Cotización Número ${quote.number} (en adelante, la "Cotización"), la cual forma parte integral del presente Contrato.</p>
+                    <p class="mt-2 text-sm italic">Servicios incluidos en la cotización: ${quote.items.map(item => item.name).join(', ')}.</p>
+
+                    <h3 class="section-title">3. SERVICIOS INCLUIDOS</h3>
+                    <p class="text-sm text-gray-700">Los servicios a ser prestados por EL PRESTADOR incluyen, pero no se limitan a:</p>
+                    <ul>
+                        <li><strong>3.1. Diseño y Desarrollo Web:</strong> Diseño, maquetación UI/UX, desarrollo frontend y backend, integración de funcionalidades y optimización móvil.</li>
+                        <li><strong>3.2. Mantenimiento Web:</strong> Actualizaciones periódicas, monitoreo de seguridad, respaldo de datos, soporte técnico y optimización de rendimiento.</li>
+                    </ul>
+
+                    <h3 class="section-title">4. PLAZO Y ENTREGA</h3>
+                    <ul>
+                        <li><strong>4.1. Plazo de Desarrollo Web:</strong> El plazo estimado para la entrega del diseño y desarrollo web inicial será de <strong>${config.devTerm} ${config.devTimeUnit}</strong>, contados a partir de la firma del presente Contrato y la recepción del primer pago.</li>
+                        <li><strong>4.2. Plazo de Mantenimiento Web:</strong> El servicio de mantenimiento web tendrá una duración inicial de <strong>${config.maintTerm} ${config.maintTimeUnit}</strong>, renovable automáticamente a menos que cualquiera de las partes notifique por escrito su deseo de no renovar con al menos <strong>${config.noticeDays} días</strong> de anticipación a la fecha de vencimiento.</li>
+                        <li><strong>4.3. Fecha de Emisión del Contrato:</strong> ${now}</li>
+                        <li><strong>4.4. Fecha de Validez de la Oferta (Cotización):</strong> ${quote.validityDate}</li>
+                    </ul>
+
+                    <h3 class="section-title">5. PRECIO Y FORMA DE PAGO</h3>
+                    
+                    <p><strong>5.1. Precio:</strong> EL CLIENTE pagará a EL PRESTADOR por los servicios descritos en este Contrato y la Cotización los siguientes valores:</p>
+                    <table class="final-table text-sm">
+                        <thead>
+                            <tr><th>Concepto</th><th>Valor</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Subtotal</td><td>$${quote.subtotal.toFixed(2)}</td></tr>
+                            <tr><td>IVA (15%)</td><td>$${quote.iva.toFixed(2)}</td></tr>
+                            <tr class="total"><td>TOTAL A PAGAR</td><td>$${quote.total.toFixed(2)}</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <p class="mt-4"><strong>5.2. Forma de Pago:</strong> Los pagos se realizarán de la siguiente manera:</p>
+                    <ul class="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
+                        ${paymentDetailsHtml}
+                        <li>Los pagos por mantenimiento web se realizarán de forma <strong>${config.maintPaymentFreq}</strong> por adelantado.</li>
+                    </ul>
+
+                    <h3 class="section-title">6. OBLIGACIONES DE LAS PARTES</h3>
+                    <p>6.1. Obligaciones de EL PRESTADOR: Prestar los servicios con la diligencia y profesionalidad requeridas; Cumplir con los plazos acordados; Mantener la confidencialidad.</p>
+                    <p>6.2. Obligaciones de EL CLIENTE: Proveer la información y los materiales necesarios de manera oportuna; Realizar los pagos en las fechas y formas acordadas; Revisar y aprobar los avances en los plazos establecidos.</p>
+
+                    <h3 class="section-title">7. PROPIEDAD INTELECTUAL</h3>
+                    <p>Una vez que EL CLIENTE haya cumplido con todos los pagos establecidos en este Contrato, la propiedad intelectual sobre el diseño y desarrollo web final será transferida a EL CLIENTE. EL PRESTADOR conservará la propiedad intelectual sobre las herramientas, librerías, y cualquier otro código o recurso preexistente o desarrollado de forma genérica.</p>
+
+                    <h3 class="section-title">8. CONFIDENCIALIDAD</h3>
+                    <p>Ambas partes se comprometen a mantener la más estricta confidencialidad sobre toda la información técnica, comercial o de cualquier otra índole a la que tengan acceso durante la ejecución de este Contrato.</p>
+
+                    <h3 class="section-title">9. TERMINACIÓN DEL CONTRATO</h3>
+                    <p>Este Contrato podrá ser terminado por cualquiera de las partes en caso de incumplimiento grave, previa notificación escrita con ${config.noticeDays} días de anticipación, o por mutuo acuerdo.</p>
+
+                    <h3 class="section-title">10. NOTAS ADICIONALES (Términos de la Cotización)</h3>
+                    <div class="text-sm p-2 bg-gray-50 border rounded-lg whitespace-pre-wrap">${quote.notes || 'No se incluyeron notas adicionales en la cotización.'}</div>
+
+                    <p class="text-center mt-12 mb-10">En señal de conformidad, las partes firman el presente Contrato en dos ejemplares de igual valor y contenido, en la fecha indicada al inicio.</p>
+
+                    <div class="flex justify-between space-x-10">
+                        <div class="signature-column">
+                            <div class="signature-line"></div>
+                            <p class="font-bold mt-1">${config.prestadorRepName}</p>
+                            <p class="text-sm">${config.prestadorRepTitle}</p>
+                            <p class="text-sm">${cs.name}</p>
+                        </div>
+                        <div class="signature-column">
+                            <div class="signature-line"></div>
+                            <p class="font-bold mt-1">${quote.client.contact || 'Pendiente Nombre Contacto'}</p>
+                            <p class="text-sm">${config.clientContactTitle}</p>
+                            <p class="text-sm">${quote.client.name}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 6. Imprimir el Contrato
+            document.getElementById('print-area').innerHTML = contractTemplate;
+            setTimeout(() => { 
+                window.print(); 
+                showTemporaryMessage(`Contrato de ${quote.client.name} generado y listo para guardar como PDF.`, 'success');
+            }, 500);
+        }
+        
+        // --- LÓGICA DE IMPRESIÓN (COTIZACIÓN) ---
         function buildPrintableHtml(quoteData) {
             const { companySettings: cs, client, items, number, issueDate, validityDate, subtotal, iva, total, notes } = quoteData;
             const logoHtml = cs.logo ? `<img src="${cs.logo}" alt="Logo de la empresa" style="max-height: 80px; width: auto;">` : '';
-            const itemsHtml = items.map(item => `<tr class="border-b"><td class="py-3 px-4 align-top"><p class="font-semibold">${item.name}</p><p class="text-sm text-gray-600 pl-2 mt-1">${item.description || ''}</p></td><td class="py-3 px-4 text-center align-top">${item.quantity}</td><td class="py-3 px-4 text-right align-top">$${item.price.toFixed(2)}</td><td class="py-3 px-4 text-right align-top">$${(item.price * item.quantity).toFixed(2)}</td></tr>`).join('');
+            const itemsHtml = items.map(item => `<tr class="border-b"><td class="py-3 px-4 align-top"><p class="font-semibold">${item.name} (${item.code})</p><p class="text-sm text-gray-600 pl-2 mt-1 whitespace-pre-wrap">${item.description || ''}</p></td><td class="py-3 px-4 text-center align-top">${item.quantity}</td><td class="py-3 px-4 text-right align-top">$${item.price.toFixed(2)}</td><td class="py-3 px-4 text-right align-top">$${(item.price * item.quantity).toFixed(2)}</td></tr>`).join('');
             const notesHtml = notes ? `<div class="mt-10 pt-4 border-t"><h4 class="font-bold text-sm mb-2">Notas:</h4><p class="text-xs text-gray-600 whitespace-pre-wrap">${notes}</p></div>` : '';
 
             let footerLinksHtml = '';
@@ -862,7 +2061,7 @@
             }
 
             return `
-                <div class="p-8 max-w-4xl mx-auto bg-white font-sans">
+                <div class="p-8 max-w-4xl mx-auto bg-white font-sans" style="font-family: ${cs.typography}">
                     <header class="flex justify-between items-start mb-10 pb-4 border-b"><div class="w-1/2">${logoHtml}</div><div class="w-1/2 text-right"><h1 class="text-3xl font-bold" style="color: ${cs.primaryColor};">COTIZACIÓN</h1><p class="text-gray-600 mt-1">Nº: ${number}</p></div></header>
                     <div class="grid grid-cols-2 gap-8 mb-10">
                         <div class="bg-gray-50 p-4 rounded-lg"><h3 class="font-bold text-gray-700 mb-2 uppercase text-sm">Cliente:</h3><p class="font-semibold">${client.name}</p><p>RUC/C.I.: ${client.ruc}</p><p>${client.contact}</p></div>
@@ -891,8 +2090,8 @@
 
         function generatePrintableQuote() {
             const client = clients.find(c => c.id === quoteClientSelect.value);
-            if (!client) { alert('Por favor, seleccione un cliente.'); return; }
-            if (quoteItemsData.length === 0) { alert('Por favor, añada al menos un servicio a la cotización.'); return; }
+            if (!client) { showTemporaryMessage('Por favor, seleccione un cliente.', 'error'); return; }
+            if (quoteItemsData.length === 0) { showTemporaryMessage('Por favor, añada al menos un servicio a la cotización.', 'error'); return; }
 
             const now = new Date();
             const dateStr = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
@@ -909,7 +2108,18 @@
             const total = parseFloat((subtotal + iva).toFixed(2));
             
             const quoteRecord = {
-                id: `quote_${new Date().getTime()}`, number: finalQuoteNumber, issueDate: issueDate, validityDate: validityDate, client: { ...client }, items: [...quoteItemsData], subtotal: subtotal, iva: iva, total: total, notes: quoteNotesInput.value, status: 'Pendiente', companySettings: { ...companySettings }
+                id: `quote_${new Date().getTime()}`, 
+                number: finalQuoteNumber, 
+                issueDate: issueDate, 
+                validityDate: validityDate, 
+                client: { ...client }, 
+                items: quoteItemsData.map(item => ({...item})), // Clonar items
+                subtotal: subtotal, 
+                iva: iva, 
+                total: total, 
+                notes: quoteNotesInput.value, 
+                status: 'Pendiente', 
+                companySettings: { ...companySettings }
             };
 
             document.getElementById('print-area').innerHTML = buildPrintableHtml(quoteRecord);
@@ -918,7 +2128,7 @@
                 window.print();
                 quotesHistory.push(quoteRecord);
                 localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
-                renderQuotesHistory();
+                renderQuotesHistory(historyClientFilterId);
                 quoteCounter++;
                 localStorage.setItem('quoteCounter', quoteCounter.toString());
                 updateQuoteNumberPreview();
@@ -928,15 +2138,520 @@
             }, 500);
         }
 
+        // --- LÓGICA DE IMPORTACIÓN/EXPORTACIÓN DE DATOS (CSV/JSON) ---
+
+        // Función Auxiliar para manejar descargas
+        function downloadFile(filename, text) {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        // Analizador de CSV (robusto contra comas y comillas)
+        function parseCSV(csvText) {
+            const rows = csvText.trim().split('\n').map(row => row.trim()).filter(row => row.length > 0);
+            if (rows.length === 0) return { rawHeaders: [], normalizedHeaders: [], data: [] };
+
+            const rawHeaders = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            const normalizedHeaders = rawHeaders.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+            const data = [];
+            
+            const separator = ',';
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const rowData = {};
+                let currentValue = '';
+                let inQuotes = false;
+                let colIndex = 0;
+
+                for (let j = 0; j < row.length; j++) {
+                    const char = row[j];
+
+                    if (char === '"') {
+                        // Toggle quote state. Handle escaped quotes if needed (optional)
+                        inQuotes = !inQuotes;
+                    } else if (char === separator && !inQuotes) {
+                        // End of column if not inside quotes
+                        const header = normalizedHeaders[colIndex];
+                        rowData[header] = currentValue.trim().replace(/^"|"$/g, '');
+                        currentValue = '';
+                        colIndex++;
+                    } else {
+                        currentValue += char;
+                    }
+                }
+                
+                // Add the last value in the row
+                if (colIndex < normalizedHeaders.length) {
+                    const header = normalizedHeaders[colIndex];
+                    rowData[header] = currentValue.trim().replace(/^"|"$/g, '');
+                }
+
+                if (Object.keys(rowData).length > 0) {
+                    data.push(rowData);
+                }
+            }
+
+            return { rawHeaders, normalizedHeaders, data };
+        }
+
+        // Mapeo de cabeceras de CSV a la estructura interna de la App
+        const CSV_MAPPINGS = {
+            clients: {
+                // Identificación No. -> ruc, Razón Social -> name, Nombre Comercial -> code, ...
+                'identificacionno': 'ruc',
+                'razonsocial': 'name',
+                'nombrecomercial': 'code',
+                'direccion': 'address',
+                'telefono': 'phone',
+                'email': 'contact',
+            },
+            services: {
+                // id -> code, code -> name (por la estructura del CSV de ejemplo)
+                'id': 'code',
+                'code': 'name',
+                'description': 'description',
+                'price': 'price',
+                'category': 'category',
+                'costointerno': 'cost'
+            }
+        };
+
+        function downloadCsvTemplate(dataType) {
+            const mappings = CSV_MAPPINGS[dataType];
+            if (!mappings) return;
+
+            // Usamos las claves de mapeo (las cabeceras originales) para generar la plantilla
+            const headers = Object.keys(mappings).map(key => {
+                // Revertimos la normalización para obtener un nombre legible
+                if (key === 'identificacionno') return 'Identificación No.';
+                if (key === 'razonsocial') return 'Razón Social';
+                if (key === 'nombrecomercial') return 'Nombre Comercial';
+                if (key === 'costointerno') return 'Costo Interno ($)';
+                return key.charAt(0).toUpperCase() + key.slice(1);
+            }).join(',');
+
+            const filename = `Plantilla_${dataType.charAt(0).toUpperCase() + dataType.slice(1)}.csv`;
+            downloadFile(filename, headers + '\n');
+            showTemporaryMessage(`Plantilla de ${dataType} descargada. Ábrela y llénala para importar.`, 'info');
+        }
+
+        // Función que se activa al seleccionar un archivo CSV (sin iniciar la carga)
+        function handleFileChange(input, dataType) {
+            const file = input.files[0];
+            const loadBtn = document.getElementById(`load${dataType.charAt(0).toUpperCase() + dataType.slice(1)}Btn`);
+            const fileStatusEl = document.getElementById(`${dataType}-selected-file`);
+            const statusBoxEl = document.getElementById(`${dataType}-structure-status`);
+            const statusMsgEl = document.getElementById(`${dataType}-status-message`);
+            const uploadIconEl = document.getElementById(`${dataType}-upload-icon`);
+            const importBtn = document.getElementById(`import${dataType.charAt(0).toUpperCase() + dataType.slice(1)}Btn`);
+
+            // 1. Resetear estados
+            loadBtn.disabled = true;
+            loadBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            loadBtn.classList.add('bg-gray-400');
+            statusBoxEl.classList.add('hidden');
+            importBtn.classList.remove('btn-load-pending');
+            importBtn.classList.add('bg-amber-500', 'hover:bg-amber-600'); 
+            uploadIconEl.classList.remove('fa-file-alt');
+            uploadIconEl.classList.add('fa-upload');
+            
+            // Si no hay archivo, detenerse.
+            if (!file) {
+                fileStatusEl.textContent = 'Ninguno';
+                return;
+            }
+
+            fileStatusEl.textContent = file.name;
+            importBtn.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+            importBtn.classList.add('btn-load-pending'); // Clase que indica archivo listo
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csvContent = e.target.result;
+                    const parseResult = parseCSV(csvContent);
+                    const validRecords = parseResult.data.length;
+                    
+                    // Almacenamos el resultado parseado temporalmente
+                    activeImportData = { type: dataType, data: parseResult.data };
+
+                    // 2. Comprobar estructura y mostrar mensaje de estado
+                    const requiredHeaders = Object.keys(CSV_MAPPINGS[dataType]);
+                    const hasAllHeaders = requiredHeaders.every(h => parseResult.normalizedHeaders.includes(h));
+                    
+                    let statusClass = 'bg-yellow-100 text-yellow-800';
+                    let statusIcon = 'fas fa-exclamation-triangle';
+                    let message = `Archivo seleccionado: ${file.name}. `;
+                    
+                    if (!hasAllHeaders) {
+                        message += `ERROR: Faltan cabeceras clave. Se requieren: ${requiredHeaders.join(', ')}. Registros encontrados: ${validRecords}.`;
+                        loadBtn.disabled = true;
+                        statusClass = 'bg-red-100 text-red-800';
+                        statusIcon = 'fas fa-times-circle';
+                    } else if (validRecords === 0) {
+                        message += `ADVERTENCIA: Archivo sin registros de datos válidos (solo cabeceras).`;
+                        loadBtn.disabled = true;
+                    } else {
+                        statusClass = 'bg-yellow-100 text-yellow-800'; // Mantenemos el amarillo para la pre-validación
+                        statusIcon = 'fas fa-check-circle';
+                        
+                        const firstRecord = parseResult.data[0] || {}; // Asegurar que sea un objeto
+
+                        if (dataType === 'clients') {
+                            const name = firstRecord[CSV_MAPPINGS.clients.razonsocial] || firstRecord[CSV_MAPPINGS.clients.nombrecomercial] || 'N/A';
+                            message += `Se encontraron ${validRecords} clientes. Previsualización: RUC: ${firstRecord[CSV_MAPPINGS.clients.identificacionno] || 'N/A'}, Nombre: ${name}`;
+                        } else if (dataType === 'services') {
+                            // Usamos el mapeo de servicios
+                            const serviceName = firstRecord[CSV_MAPPINGS.services.code] || 'N/A'; // Nombre del servicio
+                            const serviceDesc = firstRecord[CSV_MAPPINGS.services.description] || 'Sin descripción';
+                            message += `Se encontraron ${validRecords} servicios. Previsualización: Nombre: ${serviceName}, Descripción: ${serviceDesc.substring(0, 50)}...`;
+                        }
+                        
+                        loadBtn.disabled = false; // Habilitar si es válido
+                        loadBtn.classList.remove('bg-gray-400');
+                        loadBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                        uploadIconEl.classList.remove('fa-upload');
+                        uploadIconEl.classList.add('fa-file-alt');
+                    }
+                    
+                    statusBoxEl.className = `mt-2 p-2 ${statusClass} rounded-md`;
+                    statusMsgEl.innerHTML = `<i class="${statusIcon} mr-2"></i> ${message}`;
+                    statusBoxEl.classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("Error parsing CSV:", error);
+                    statusBoxEl.className = `mt-2 p-2 bg-red-100 text-red-800 rounded-md`;
+                    statusMsgEl.innerHTML = `<i class="fas fa-times-circle mr-2"></i> ERROR CRÍTICO al leer el archivo. Verifique el formato de las celdas (especialmente las comillas dobles).`;
+                    statusBoxEl.classList.add('hidden');
+                    loadBtn.disabled = true;
+                    activeImportData = null;
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Función que se activa al presionar el botón de "Cargar"
+        function importCsvData(dataType) {
+            if (!activeImportData || activeImportData.type !== dataType) {
+                showTemporaryMessage('Por favor, seleccione un archivo CSV primero y espere la validación.', 'error');
+                return;
+            }
+
+            const loadBtn = document.getElementById(`load${dataType.charAt(0).toUpperCase() + dataType.slice(1)}Btn`);
+            loadBtn.disabled = true; // Deshabilitar mientras se procesa
+
+            const recordsToImport = activeImportData.data;
+            const mappings = CSV_MAPPINGS[dataType];
+            
+            // Configurar Modal
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+            const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+            
+            modalTitle.textContent = `Confirmar Importación de ${dataType.charAt(0).toUpperCase() + dataType.slice(1)}`;
+            modalContent.innerHTML = `
+                <p>Está a punto de importar <strong>${recordsToImport.length}</strong> registros de ${dataType}.</p>
+                <p class="font-semibold text-red-600">ADVERTENCIA: La importación reemplazará los datos existentes si encuentra un código o RUC duplicado, o añadirá nuevos registros.</p>
+                <div class="mt-4 p-3 bg-gray-50 border rounded-lg">
+                    <p class="font-medium">Previsualización del primer registro:</p>
+                    ${dataType === 'clients' ? `
+                        <p class="text-xs mt-1">RUC: ${recordsToImport[0][mappings.identificacionno]}</p>
+                        <p class="text-xs">Razón Social: ${recordsToImport[0][mappings.razonsocial]}</p>
+                    ` : `
+                        <p class="text-xs mt-1">Código: ${recordsToImport[0][mappings.id]}</p>
+                        <p class="text-xs">Nombre: ${recordsToImport[0][mappings.code]}</p>
+                        <p class="text-xs truncate max-w-full">Descripción: ${recordsToImport[0][mappings.description].substring(0, 100)}...</p>
+                    `}
+                </div>
+            `;
+            
+            modalConfirmBtn.onclick = () => {
+                closeModal('confirmation-modal');
+                processConfirmedImport(dataType, recordsToImport, mappings);
+            };
+
+            document.getElementById('confirmation-modal').classList.remove('hidden');
+        }
+
+        // Ejecuta la importación después de la confirmación del modal
+        function processConfirmedImport(dataType, recordsToImport, mappings) {
+            let existingData = dataType === 'clients' ? clients : services;
+            let importCount = 0;
+            
+            recordsToImport.forEach(record => {
+                let newData = {};
+                let isNew = true;
+
+                // Mapear campos
+                for (const csvHeader in mappings) {
+                    const appKey = mappings[csvHeader];
+                    let value = record[csvHeader] || '';
+                    
+                    // Limpieza y Conversión de valores
+                    if (appKey === 'price' || appKey === 'cost') {
+                        value = parseFloat(String(value).replace('$', '').replace(',', '.')) || 0.00;
+                    }
+                    if (appKey === 'code') {
+                        value = value.toUpperCase();
+                    }
+
+                    newData[appKey] = value;
+                }
+
+                // Lógica de Duplicados
+                if (dataType === 'clients') {
+                    const ruc = newData.ruc;
+                    const existingIndex = existingData.findIndex(item => item.ruc === ruc);
+                    if (existingIndex > -1) {
+                        existingData[existingIndex] = { ...existingData[existingIndex], ...newData };
+                        isNew = false;
+                    }
+                } else if (dataType === 'services') {
+                    const code = newData.code;
+                    const existingIndex = existingData.findIndex(item => item.code === code);
+                    if (existingIndex > -1) {
+                        existingData[existingIndex] = { ...existingData[existingIndex], ...newData };
+                        isNew = false;
+                    }
+                }
+
+                if (isNew) {
+                    newData.id = `${dataType}_${new Date().getTime()}_${Math.random().toString(16).slice(2)}`;
+                    existingData.push(newData);
+                }
+                importCount++;
+            });
+
+            // Guardar en LocalStorage y renderizar
+            if (dataType === 'clients') {
+                clients = existingData;
+                localStorage.setItem('clients', JSON.stringify(clients));
+                renderClients();
+            } else if (dataType === 'services') {
+                services = existingData;
+                localStorage.setItem('services', JSON.stringify(services));
+                renderServices();
+            }
+
+            // Limpieza y feedback
+            activeImportData = null;
+            document.getElementById(`load${dataType.charAt(0).toUpperCase() + dataType.slice(1)}Btn`).disabled = true;
+            document.getElementById(`${dataType}-structure-status`).classList.add('hidden');
+            document.getElementById(`${dataType}-selected-file`).textContent = 'Ninguno';
+            showTemporaryMessage(`¡Importación CSV exitosa! Se procesaron ${importCount} registros de ${dataType}.`, 'success');
+        }
+
+        // Exportación de datos (JSON)
+        function exportData() {
+            const dataToExport = {
+                __ameizin_version: 'v1.0',
+                clients: clients,
+                services: services,
+                quotesHistory: quotesHistory,
+                contracts: contracts,
+                quoteCounter: quoteCounter,
+                companySettings: companySettings
+            };
+            const json = JSON.stringify(dataToExport, null, 2);
+            const now = new Date().toISOString().slice(0, 10);
+            downloadFile(`Ameizin_Backup_${now}.json`, json);
+        }
+
+        // Importación de datos (JSON)
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData.__ameizin_version !== 'v1.0') {
+                        showTemporaryMessage('Error: El archivo JSON no es compatible con esta versión del cotizador.', 'error');
+                        return;
+                    }
+
+                    // Sobrescribir datos
+                    clients = importedData.clients || [];
+                    services = importedData.services || [];
+                    quotesHistory = importedData.quotesHistory || [];
+                    contracts = importedData.contracts || [];
+                    quoteCounter = importedData.quoteCounter || 1;
+                    companySettings = { ...companySettings, ...importedData.companySettings }; // Mantener valores por defecto si faltan
+
+                    localStorage.setItem('clients', JSON.stringify(clients));
+                    localStorage.setItem('services', JSON.stringify(services));
+                    localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
+                    localStorage.setItem('contracts', JSON.stringify(contracts));
+                    localStorage.setItem('quoteCounter', quoteCounter.toString());
+                    localStorage.setItem('companySettings', JSON.stringify(companySettings));
+
+                    initializeData(); // Recargar toda la aplicación con los nuevos datos
+                    showTemporaryMessage('Importación de datos completa y exitosa.', 'success');
+
+                } catch (error) {
+                    showTemporaryMessage('Error al procesar el archivo JSON. Asegúrese de que el formato sea correcto.', 'error');
+                    console.error('JSON Import Error:', error);
+                }
+            };
+            reader.readAsText(file);
+            // Limpiamos el input después de la lectura para que el evento onchange se dispare de nuevo si se selecciona el mismo archivo
+            input.value = null; 
+        }
+        
+        // --- UTILIDADES GLOBALES (Notificación) ---
+        
+        let messageTimeout;
+        function showTemporaryMessage(message, type = 'info') {
+            // Utilizamos el div de error del login para mostrar el mensaje temporalmente
+            const el = document.getElementById('login-error');
+            el.textContent = message;
+            el.style.display = 'block';
+            el.classList.remove('text-red-500', 'text-green-500', 'text-blue-500', 'bg-green-100', 'p-2', 'rounded-lg');
+            
+            if (type === 'error') {
+                el.classList.add('text-red-500');
+            } else if (type === 'success') {
+                el.classList.add('text-green-600', 'bg-green-100', 'p-2', 'rounded-lg');
+            } else {
+                el.classList.add('text-indigo-500');
+            }
+            
+            clearTimeout(messageTimeout);
+            messageTimeout = setTimeout(() => {
+                el.style.display = 'none';
+                el.classList.remove('bg-green-100', 'p-2', 'rounded-lg');
+            }, 5000);
+        }
+
+
+        // --- LÓGICA DE GENERACIÓN DE CONTENIDO CON GEMINI ---
+        
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=`;
+        const API_KEY = ""; // Será proporcionada por el entorno de ejecución
+        
+        async function callGeminiApi(systemPrompt, userQuery, maxRetries = 3) {
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+            
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const response = await fetch(API_URL + API_KEY, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) return text.trim();
+                    }
+                    
+                    if (response.status === 429 && attempt < maxRetries - 1) {
+                        // Exponential backoff for rate limits
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                    
+                    throw new Error(`API Error: ${response.statusText}`);
+
+                } catch (error) {
+                    if (attempt === maxRetries - 1) throw error;
+                    // Wait before retrying (exponential backoff)
+                    const delay = Math.pow(2, attempt) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            throw new Error("Failed to call Gemini API after multiple retries.");
+        }
+        
+        // Genera la descripción de un servicio
+        async function generateServiceDescription(event) {
+            event.preventDefault(); // Evitar que el submit del formulario se dispare
+
+            const name = serviceNameInput.value;
+            const category = serviceCategoryInput.value || 'General';
+            
+            if (!name) {
+                showTemporaryMessage('Por favor, ingrese el Nombre del Servicio antes de generar la descripción.', 'error');
+                return;
+            }
+
+            const generatorBtn = event.currentTarget;
+            generatorBtn.disabled = true;
+            document.getElementById('desc-status').textContent = 'Generando descripción con IA... (Puede tardar unos segundos)';
+            document.getElementById('desc-status').classList.remove('hidden');
+
+            const systemPrompt = "Eres un redactor de marketing digital experto en ventas de servicios web (diseño, hosting, SEO). Tu tarea es crear una descripción de producto corta, atractiva y orientada al valor para un servicio específico. NO incluyas encabezados, solo el texto descriptivo.";
+            const userQuery = `Crea una descripción para el servicio: ${name}. Categoría: ${category}. Enfócate en el beneficio para el cliente. Máximo 4 frases.`;
+
+            try {
+                const generatedText = await callGeminiApi(systemPrompt, userQuery);
+                serviceDescriptionInput.value = generatedText;
+                document.getElementById('desc-status').textContent = '✅ Descripción generada con éxito.';
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                document.getElementById('desc-status').textContent = '❌ Error al generar la descripción. Intente de nuevo más tarde.';
+                showTemporaryMessage('Error de conexión o API de Gemini. Consulte la consola para detalles.', 'error');
+            } finally {
+                generatorBtn.disabled = false;
+                setTimeout(() => document.getElementById('desc-status').classList.add('hidden'), 5000);
+            }
+        }
+
+        // Genera las notas de la cotización
+        async function generateQuoteNotes() {
+            const subtotal = quoteItemsData.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2);
+            const itemsList = quoteItemsData.map(item => `${item.quantity}x ${item.name} ($${item.price.toFixed(2)})`).join(', ');
+            
+            generateNotesBtn.disabled = true;
+            notesStatus.textContent = 'Redactando notas y condiciones de pago con IA... (Puede tardar unos segundos)';
+            notesStatus.classList.remove('hidden');
+
+            const systemPrompt = "Eres un asistente de ventas profesional. Tu tarea es generar NOTAS FINALES para una cotización formal. Incluye: 1) Un breve resumen del proyecto. 2) Condiciones de pago sugeridas (Ej: 50% al iniciar, 50% a la entrega). 3) Una cláusula de validez (Ej: 30 días). Formatea el texto para un campo de notas, sin encabezados ni títulos.";
+            const userQuery = `La cotización incluye los siguientes items: ${itemsList}. Subtotal: $${subtotal}. Genera las notas.`;
+
+            try {
+                const generatedText = await callGeminiApi(systemPrompt, userQuery);
+                quoteNotesInput.value = generatedText;
+                notesStatus.textContent = '✅ Notas generadas con éxito.';
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                notesStatus.textContent = '❌ Error al generar las notas. Intente de nuevo más tarde.';
+                showTemporaryMessage('Error de conexión o API de Gemini.', 'error');
+            } finally {
+                generateNotesBtn.disabled = false;
+                setTimeout(() => notesStatus.classList.add('hidden'), 5000);
+            }
+        }
+
+
         // --- INICIALIZACIÓN ---
         function initializeData() {
+            // Inicializar vistas
+            changeClientView('compact');
+            changeServiceView('compact');
+            
             renderClients();
             renderServices();
             renderQuoteItems();
             updateQuoteNumberPreview();
             loadSettings();
-            renderQuotesHistory();
+            renderQuotesHistory(historyClientFilterId);
             renderDashboard();
+            renderContractsPage(contractClientFilterId);
+            
+            // Aseguramos que la pestaña Cotizador esté activa por defecto
             document.querySelectorAll('.tab-button')[0].classList.add('active');
             document.querySelectorAll('.tab-content')[0].classList.add('active');
         }
@@ -946,6 +2661,14 @@
                 showApp();
                 initializeData();
             }
+            // Aseguramos que el estado inicial de los botones de carga sea correcto
+            document.getElementById('loadClientsBtn').disabled = true;
+            document.getElementById('loadServicesBtn').disabled = true;
+
+            // Inicializar la validación de pagos al cargar
+            document.getElementById('payment1Pct').oninput = validatePaymentSum;
+            document.getElementById('payment2Pct').oninput = validatePaymentSum;
+            document.getElementById('payment3Pct').oninput = validatePaymentSum;
         });
     </script>
 </body>

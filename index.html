@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Herramienta de Cotización v12</title>
+    <title>Herramienta de Cotización v11 (Buscador & Filtro Historial)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carga de múltiples fuentes para selección -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- NUEVO: Dependencia para Selectores con Búsqueda (Tom Select) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.2.2/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.2.2/js/tom-select.complete.min.js"></script>
     <style id="dynamic-styles">
         /* Estilo base, que será sobrescrito por JavaScript al cargar la configuración */
         body {
@@ -98,17 +101,6 @@
             align-items: center;
             justify-content: center;
             z-index: 60; /* Mayor que el login-overlay (z-50) */
-            visibility: hidden; /* Oculto por defecto */
-            opacity: 0;
-            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
-        }
-        .quick-modal-overlay.hidden {
-            visibility: hidden;
-            opacity: 0;
-        }
-        .quick-modal-overlay:not(.hidden) {
-            visibility: visible;
-            opacity: 1;
         }
         
         /* Estilos para las nuevas vistas (compacta/detallada) */
@@ -129,6 +121,25 @@
             border-radius: 0.75rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
+        
+        /* NUEVO: Estilos para Tom Select (asegurar que se integre bien con Tailwind) */
+        .ts-wrapper.form-control {
+            padding: 0; /* Remover padding del wrapper */
+            border: none; /* Remover borde del wrapper */
+        }
+        .ts-control {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+            line-height: 1.25;
+            min-height: 40px; /* Altura consistente con p-2 */
+        }
+        .ts-control.focus {
+             border-color: #4f46e5;
+             box-shadow: 0 0 0 1px #4f46e5;
+        }
+
 
         @media print {
             body * {
@@ -167,7 +178,7 @@
     </div>
     
     <!-- Modal de Confirmación para Importación (CSV/JSON) -->
-    <div id="confirmation-modal" class="quick-modal-overlay hidden">
+    <div id="confirmation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
             <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Confirmar Importación</h3>
             <div id="modal-content" class="text-gray-700 space-y-3 mb-6"></div>
@@ -374,7 +385,7 @@
                 
                 <div class="grid grid-cols-2 gap-3">
                     <div class="file-upload-container">
-                        <button id="importServicesBtnModal" class_name="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
+                        <button id="importServicesBtnModal" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
                             <i class="fas fa-upload mr-2" id="service-upload-icon-modal"></i> 1. Archivo Seleccionado
                         </button>
                         <input type="file" id="importServicesCsvInputModal" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'services')">
@@ -386,42 +397,6 @@
             </div>
 
             <p class="text-xs text-gray-500 mt-4">La importación se realizará cuando haga clic en el botón "2. Cargar Servicios" y confirme en la siguiente ventana.</p>
-        </div>
-    </div>
-    
-    <!-- *** NUEVO MODAL: IMPORTAR CLIENTES *** -->
-    <div id="clientImportModal" class="quick-modal-overlay hidden">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-file-csv mr-2 text-green-600"></i> Importar Clientes CSV</h3>
-                <button onclick="closeModal('clientImportModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-            </div>
-            <p class="text-sm text-gray-600 mb-4">Utilice el siguiente asistente para cargar clientes de manera masiva mediante un archivo CSV. Se recomienda descargar la plantilla.</p>
-
-            <div class="flex flex-col space-y-3">
-                <button onclick="downloadCsvTemplate('clients')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm"><i class="fas fa-download mr-2"></i> Descargar Plantilla CSV</button>
-                
-                <div class="p-3 rounded-lg border text-sm transition duration-300" id="client-import-status-modal">
-                    <p class="text-gray-600">Archivo seleccionado: <span class="font-semibold text-gray-800" id="client-selected-file-modal">Ninguno</span>.</p>
-                    <div id="client-structure-status-modal" class="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded-md hidden">
-                        <i class="fas fa-file-csv mr-2"></i> <span id="client-status-message-modal">Seleccione un archivo CSV para validar e importar.</span>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="file-upload-container">
-                        <button id="importClientsBtnModal" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
-                            <i class="fas fa-upload mr-2" id="client-upload-icon-modal"></i> 1. Archivo Seleccionado
-                        </button>
-                        <input type="file" id="importClientsCsvInputModal" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'clients')">
-                    </div>
-                    <button id="loadClientsBtnModal" onclick="importCsvData('clients')" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg shadow-sm disabled:opacity-50" disabled>
-                        2. Cargar Clientes
-                    </button>
-                </div>
-            </div>
-
-            <p class="text-xs text-gray-500 mt-4">La importación se realizará cuando haga clic en el botón "2. Cargar Clientes" y confirme en la siguiente ventana.</p>
         </div>
     </div>
 
@@ -459,10 +434,11 @@
                     <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
                         <h2 class="text-2xl font-bold mb-4 border-b pb-2">Crear Nueva Cotización</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <!-- Selector de Cliente con Botón Modal -->
+                            <!-- Selector de Cliente con Buscador y Botón Modal (USANDO DIV Y CLASES PARA TOM SELECT) -->
                             <div>
                                 <label for="quoteClient" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Cliente</label>
                                 <div class="flex space-x-2">
+                                    <!-- El <select> debe tener la clase "w-full" y luego Tom Select lo envolverá -->
                                     <select id="quoteClient" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
                                     <button onclick="showClientModal('create')" class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-300 shadow-sm" title="Crear Cliente Rápido"><i class="fas fa-user-plus"></i></button>
                                 </div>
@@ -476,10 +452,11 @@
                         <!-- SECCIÓN DE AÑADIR SERVICIO -->
                         <div class="flex flex-col gap-4 mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
                             <div class="grid grid-cols-3 md:grid-cols-5 gap-3 items-end">
-                                <!-- Selector de Servicio con Botón Modal -->
+                                <!-- Selector de Servicio con Buscador y Botón Modal (USANDO DIV Y CLASES PARA TOM SELECT) -->
                                 <div class="col-span-3 md:col-span-2">
                                     <label for="serviceSelect" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Servicio</label>
                                     <div class="flex space-x-2">
+                                        <!-- El <select> debe tener la clase "w-full" y luego Tom Select lo envolverá -->
                                         <select id="serviceSelect" onchange="updateServiceDetailPreview()" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
                                         <button onclick="showServiceModal('create')" class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-300 shadow-sm" title="Crear Servicio Rápido"><i class="fas fa-plus"></i></button>
                                     </div>
@@ -536,23 +513,6 @@
             <div id="dashboard" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
                     <h2 class="text-2xl font-bold mb-6">Dashboard de Ventas</h2>
-                    
-                    <!-- *** NUEVOS FILTROS DE FECHA *** -->
-                    <div class="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
-                        <div class="flex-1">
-                            <label for="dashStartDate" class="block text-sm font-medium text-gray-700">Fecha de Inicio</label>
-                            <input type="date" id="dashStartDate" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                        </div>
-                        <div class="flex-1">
-                            <label for="dashEndDate" class="block text-sm font-medium text-gray-700">Fecha de Fin</label>
-                            <input type="date" id="dashEndDate" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                        </div>
-                        <div class="flex items-end">
-                            <button onclick="renderDashboard()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-sm h-10 w-full md:w-auto"><i class="fas fa-filter mr-2"></i>Filtrar</button>
-                        </div>
-                    </div>
-                    <!-- *** FIN FILTROS DE FECHA *** -->
-
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                         <div class="bg-green-100 p-4 rounded-lg text-center"><p class="text-sm text-green-800 font-semibold">VENTAS (ACEPTADAS)</p><p id="total-sales" class="text-3xl font-bold text-green-600">$0.00</p></div>
                         <div class="bg-blue-100 p-4 rounded-lg text-center"><p class="text-sm text-blue-800 font-semibold">TICKET PROMEDIO</p><p id="average-sale" class="text-3xl font-bold text-blue-600">$0.00</p></div>
@@ -566,35 +526,17 @@
                 </div>
             </div>
 
-            <!-- Pestaña: Historial -->
+            <!-- Pestaña: Historial (MODIFICADA: Agregado filtro de tiempo y botón de filtro) -->
             <div id="historial" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-2xl font-bold mb-4">Historial de Cotizaciones <span id="historyClientFilter" class="text-base font-normal text-indigo-500"></span></h2>
-                    
-                    <!-- *** NUEVOS FILTROS DE HISTORIAL *** -->
-                    <div class="flex flex-col md:flex-row gap-4 mb-4 p-4 bg-gray-50 rounded-lg border items-end">
-                        <div class="flex-1">
-                            <label for="historyStartDate" class="block text-sm font-medium text-gray-700">Desde</label>
-                            <input type="date" id="historyStartDate" onchange="renderQuotesHistory(historyClientFilterId)" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 border-b pb-4">
+                        <h2 class="text-2xl font-bold">Historial de Cotizaciones <span id="historyClientFilter" class="text-base font-normal text-indigo-500"></span></h2>
+                        <div class="flex space-x-3 mt-4 sm:mt-0 no-print">
+                            <button onclick="setHistoryFilter('all')" id="filter-all" class="px-3 py-1 text-sm rounded-lg bg-indigo-600 text-white transition duration-200">Todo</button>
+                            <button onclick="setHistoryFilter('last30days')" id="filter-last30days" class="px-3 py-1 text-sm rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition duration-200">Últimos 30 días</button>
+                            <button onclick="setHistoryFilter('last90days')" id="filter-last90days" class="px-3 py-1 text-sm rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition duration-200">Últimos 90 días</button>
+                            <button onclick="setHistoryFilter('lastyear')" id="filter-lastyear" class="px-3 py-1 text-sm rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition duration-200">Último Año</button>
                         </div>
-                        <div class="flex-1">
-                            <label for="historyEndDate" class="block text-sm font-medium text-gray-700">Hasta</label>
-                            <input type="date" id="historyEndDate" onchange="renderQuotesHistory(historyClientFilterId)" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                        </div>
-                        <div class="flex-1">
-                            <label for="historyStatusFilter" class="block text-sm font-medium text-gray-700">Estado</label>
-                            <select id="historyStatusFilter" onchange="renderQuotesHistory(historyClientFilterId)" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                                <option value="">Todos</option>
-                                <option value="Pendiente">Pendiente</option>
-                                <option value="Aceptada">Aceptada</option>
-                                <option value="Rechazada">Rechazada</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- *** NUEVO BUSCADOR DE HISTORIAL *** -->
-                    <div class="mb-4">
-                        <input type="text" id="historySearchInput" onkeyup="renderQuotesHistory(historyClientFilterId)" placeholder="Buscar por cliente, N° cotización..." class="w-full md:w-1/2 p-2 border border-gray-300 rounded-lg shadow-sm">
                     </div>
 
                     <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nº Cotización</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th><th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th></tr></thead><tbody id="quotesHistoryList" class="bg-white divide-y divide-gray-200"></tbody></table></div>
@@ -608,6 +550,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="md:col-span-1">
                             <label for="contract-client-select" class="block text-sm font-medium text-gray-700 mb-1">1. Seleccione un Cliente</label>
+                            <!-- NOTE: Este select NO usa Tom Select, mantiene el comportamiento original -->
                             <select id="contract-client-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm"></select>
                             <label for="contract-quote-select" class="block text-sm font-medium text-gray-700 mt-4 mb-1">2. Seleccione Cotización Aceptada</label>
                             <select id="contract-quote-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm" onchange="checkContractQuote()"></select>
@@ -627,18 +570,11 @@
             <!-- Pestaña: Clientes (Ahora solo lista y botones) -->
             <div id="clientes" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <!-- *** NUEVO BUSCADOR DE CLIENTES *** -->
-                    <div class="mb-4">
-                        <input type="text" id="clientSearchInput" onkeyup="renderClients()" placeholder="Buscar por Razón Social, RUC o Código..." class="w-full md:w-1/2 p-2 border border-gray-300 rounded-lg shadow-sm">
-                    </div>
-
                     <div class="flex justify-between items-center mb-6 border-b pb-4">
                         <h2 class="text-2xl font-bold">Lista de Clientes</h2>
                         <div class="flex space-x-3">
                             <button onclick="changeClientView('compact')" id="clientViewCompactBtn" class="p-2 text-gray-600 hover:text-indigo-600 rounded-lg bg-gray-100 active"><i class="fas fa-th-list"></i></button>
                             <button onclick="changeClientView('detailed')" id="clientViewDetailedBtn" class="p-2 text-gray-400 hover:text-indigo-600 rounded-lg"><i class="fas fa-grip-horizontal"></i></button>
-                            <!-- *** NUEVO BOTÓN PARA MODAL DE IMPORTACIÓN *** -->
-                            <button onclick="showQuickModal('clientImportModal')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition shadow-md font-semibold"><i class="fas fa-file-csv mr-2"></i>Importar CSV</button>
                             <button onclick="showClientModal('create')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md font-semibold"><i class="fas fa-user-plus mr-2"></i>Agregar Cliente</button>
                         </div>
                     </div>
@@ -647,7 +583,31 @@
                         <!-- Contenido dinámico (tabla o cards) se renderiza aquí -->
                     </div>
                     
-                    <!-- *** SECCIÓN DE IMPORTACIÓN ESTÁTICA ELIMINADA *** -->
+                    <div class="mt-8 pt-4 border-t max-w-lg">
+                        <h3 class="text-xl font-bold mb-4">Importar Clientes (CSV)</h3>
+                        <div class="flex flex-col space-y-3">
+                            <button onclick="downloadCsvTemplate('clients')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm"><i class="fas fa-download mr-2"></i> Descargar Plantilla CSV</button>
+                            
+                            <div class="p-3 rounded-lg border text-sm transition duration-300" id="client-import-status">
+                                <p class="text-gray-600">Archivo seleccionado: <span class="font-semibold text-gray-800" id="client-selected-file">Ninguno</span>.</p>
+                                <div id="client-structure-status" class="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded-md hidden">
+                                    <i class="fas fa-file-csv mr-2"></i> <span id="client-status-message">Seleccione un archivo CSV para validar e importar.</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="file-upload-container">
+                                    <button id="importClientsBtn" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
+                                        <i class="fas fa-upload mr-2" id="client-upload-icon"></i> 1. Archivo Seleccionado
+                                    </button>
+                                    <input type="file" id="importClientsCsvInput" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'clients')">
+                                </div>
+                                <button id="loadClientsBtn" onclick="importCsvData('clients')" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg shadow-sm disabled:opacity-50" disabled>
+                                    2. Cargar Clientes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
             </div>
@@ -655,11 +615,6 @@
             <!-- Pestaña: Servicios (MODIFICADA: Se mueve la importación a un botón/modal) -->
             <div id="servicios" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <!-- *** NUEVO BUSCADOR DE SERVICIOS *** -->
-                    <div class="mb-4">
-                        <input type="text" id="serviceSearchInput" onkeyup="renderServices()" placeholder="Buscar por Nombre, Código o Categoría..." class="w-full md:w-1/2 p-2 border border-gray-300 rounded-lg shadow-sm">
-                    </div>
-
                     <div class="flex justify-between items-center mb-6 border-b pb-4">
                         <h2 class="text-2xl font-bold">Lista de Servicios</h2>
                         <div class="flex space-x-3">
@@ -756,13 +711,12 @@
             // Si cerramos el modal de confirmación, limpiamos datos de importación
             if (modalId === 'confirmation-modal') {
                 activeImportData = null;
-                // *** MODIFICACIÓN: Apuntar a los botones de los modales ***
-                const clientLoadBtn = document.getElementById('loadClientsBtnModal');
+                const clientLoadBtn = document.getElementById('loadClientsBtn');
                 const serviceLoadBtnModal = document.getElementById('loadServicesBtnModal');
                 
                 // Estos botones deben re-habilitarse si la validación previa fue exitosa (clase bg-green-600)
-                if (clientLoadBtn) clientLoadBtn.disabled = !clientLoadBtn.classList.contains('bg-green-600');
-                if (serviceLoadBtnModal) serviceLoadBtnModal.disabled = !serviceLoadBtnModal.classList.contains('bg-green-600');
+                clientLoadBtn.disabled = !clientLoadBtn.classList.contains('bg-green-600');
+                serviceLoadBtnModal.disabled = !serviceLoadBtnModal.classList.contains('bg-green-600');
             }
             // Resetear errores del modal de contrato
             if (modalId === 'contractConfigModal') {
@@ -838,7 +792,12 @@
         let currentServiceView = 'compact'; // 'compact' o 'detailed'
         let historyClientFilterId = null; // ID del cliente para filtrar el historial
         let contractClientFilterId = null; // ID del cliente para filtrar contratos
+        let currentHistoryFilter = 'all'; // NUEVO: Filtro de tiempo en historial
 
+        // NUEVAS VARIABLES GLOBALES PARA TOM SELECT
+        let tsQuoteClient = null;
+        let tsServiceSelect = null;
+        
         // --- LÓGICA DE PESTAÑAS ---
         function changeTab(event, tabName, clientFilterId = null) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -864,7 +823,8 @@
             }
             if (tabName === 'historial') {
                 historyClientFilterId = clientFilterId;
-                renderQuotesHistory(historyClientFilterId);
+                // Al ir al historial, forzamos el renderizado con el filtro de tiempo actual
+                renderQuotesHistory(historyClientFilterId, currentHistoryFilter); 
             }
             if (tabName === 'clientes') {
                 renderClients();
@@ -927,6 +887,7 @@
         const clientCityInput = document.getElementById('clientCity');
         const clientModalTitle = document.getElementById('clientModalTitle');
         const clientSubmitBtn = document.getElementById('clientSubmitBtn');
+        const quoteClientSelect = document.getElementById('quoteClient'); // Se mantiene la referencia al SELECT original
         
         // Muestra el modal de cliente para crear o editar
         function showClientModal(mode, id = null) {
@@ -973,24 +934,8 @@
         function renderClients() {
             clientViewContent.innerHTML = '';
             
-            // *** NUEVO: Obtener término de búsqueda ***
-            const searchTerm = document.getElementById('clientSearchInput') ? document.getElementById('clientSearchInput').value.toLowerCase() : '';
-            let filteredClients = [...clients];
-
-            // *** NUEVO: Aplicar filtro de búsqueda ***
-            if (searchTerm) {
-                filteredClients = filteredClients.filter(c =>
-                    (c.name && c.name.toLowerCase().includes(searchTerm)) ||
-                    (c.ruc && c.ruc.toLowerCase().includes(searchTerm)) ||
-                    (c.code && c.code.toLowerCase().includes(searchTerm))
-                );
-            }
-
-            if (filteredClients.length === 0) {
-                const message = searchTerm 
-                    ? 'No hay clientes que coincidan con su búsqueda.'
-                    : 'No hay clientes registrados.';
-                clientViewContent.innerHTML = `<p class="text-center py-8 text-gray-500">${message}</p>`;
+            if (clients.length === 0) {
+                clientViewContent.innerHTML = `<p class="text-center py-8 text-gray-500">No hay clientes registrados.</p>`;
                 return;
             }
 
@@ -1012,7 +957,7 @@
                     </div>
                 `;
                 const clientList = document.getElementById('clientList');
-                filteredClients.forEach(client => { // *** MODIFICADO: Usar filteredClients ***
+                clients.forEach(client => {
                     const row = document.createElement('tr');
                     const nameRuc = `<div class="font-semibold">${client.name}</div><div class="text-xs text-gray-500">${client.ruc}</div>`;
                     const contactInfo = `<div class="font-medium">${client.contact || 'N/A'}</div><div class="text-xs text-gray-500">${client.address || 'Sin dirección'}</div>`;
@@ -1037,7 +982,7 @@
                 const cardGrid = document.createElement('div');
                 cardGrid.className = 'client-card-grid';
                 
-                filteredClients.forEach(client => { // *** MODIFICADO: Usar filteredClients ***
+                clients.forEach(client => {
                     // LÓGICA DE AJUSTE DE TAMAÑO DE FUENTE
                     const nameLength = client.name ? client.name.length : 0;
                     // Se reduce el tamaño de fuente si el nombre supera los 30 caracteres
@@ -1101,10 +1046,12 @@
             clientForm.reset();
             closeModal('clientFormModal');
             
-            // Si estaba en Cotizador y crea uno nuevo, lo selecciona automáticamente
+            // Si estaba en Cotizador y crea uno nuevo, lo selecciona automáticamente (USANDO TOM SELECT)
             if (document.getElementById('cotizador').classList.contains('active') && !isEditing) {
-                quoteClientSelect.value = newId;
-                quoteClientSelect.dispatchEvent(new Event('change'));
+                if(tsQuoteClient) {
+                    tsQuoteClient.setValue(newId);
+                    // Como Tom Select emite un evento 'change', no necesitamos dispararlo manualmente
+                }
             }
             
             showTemporaryMessage(`Cliente ${clientData.name} ${isEditing ? 'actualizado' : 'guardado'} con éxito.`, 'success');
@@ -1131,6 +1078,7 @@
         const serviceCostInput = document.getElementById('serviceCost');
         const serviceModalTitle = document.getElementById('serviceModalTitle');
         const serviceSubmitBtn = document.getElementById('serviceSubmitBtn');
+        const serviceSelect = document.getElementById('serviceSelect'); // Se mantiene la referencia al SELECT original
         
         // Muestra el modal de servicio para crear o editar
         function showServiceModal(mode, id = null) {
@@ -1174,24 +1122,8 @@
         function renderServices() {
             serviceViewContent.innerHTML = '';
 
-            // *** NUEVO: Obtener término de búsqueda ***
-            const searchTerm = document.getElementById('serviceSearchInput') ? document.getElementById('serviceSearchInput').value.toLowerCase() : '';
-            let filteredServices = [...services];
-
-            // *** NUEVO: Aplicar filtro de búsqueda ***
-            if (searchTerm) {
-                filteredServices = filteredServices.filter(s =>
-                    (s.name && s.name.toLowerCase().includes(searchTerm)) ||
-                    (s.code && s.code.toLowerCase().includes(searchTerm)) ||
-                    (s.category && s.category.toLowerCase().includes(searchTerm))
-                );
-            }
-
-             if (filteredServices.length === 0) {
-                const message = searchTerm
-                    ? 'No hay servicios que coincidan con su búsqueda.'
-                    : 'No hay servicios registrados.';
-                serviceViewContent.innerHTML = `<p class="text-center py-8 text-gray-500">${message}</p>`;
+             if (services.length === 0) {
+                serviceViewContent.innerHTML = `<p class="text-center py-8 text-gray-500">No hay servicios registrados.</p>`;
                 return;
             }
             
@@ -1213,7 +1145,7 @@
                     </div>
                 `;
                 const serviceList = document.getElementById('serviceList');
-                filteredServices.forEach(service => { // *** MODIFICADO: Usar filteredServices ***
+                services.forEach(service => {
                     const row = document.createElement('tr');
                     const serviceInfo = `<div class="font-semibold">${service.name}</div><div class="text-xs text-gray-500">${service.code}</div>`;
                     const priceInfo = `<div class="font-semibold">$${parseFloat(service.price).toFixed(2)}</div><div class="text-xs text-gray-500">Costo: $${parseFloat(service.cost).toFixed(2)}</div>`;
@@ -1234,7 +1166,7 @@
                 const cardGrid = document.createElement('div');
                 cardGrid.className = 'client-card-grid'; // Reutilizamos el estilo de grid
 
-                filteredServices.forEach(service => { // *** MODIFICADO: Usar filteredServices ***
+                services.forEach(service => {
                     const card = document.createElement('div');
                     card.className = 'client-card-detailed border border-gray-200 hover:shadow-lg transition duration-150 relative';
                     card.innerHTML = `
@@ -1290,10 +1222,12 @@
             serviceForm.reset();
             closeModal('serviceFormModal');
             
-            // Si estaba en Cotizador y crea uno nuevo, lo selecciona automáticamente
+            // Si estaba en Cotizador y crea uno nuevo, lo selecciona automáticamente (USANDO TOM SELECT)
             if (document.getElementById('cotizador').classList.contains('active') && !isEditing) {
-                serviceSelect.value = newId;
-                updateServiceDetailPreview();
+                if(tsServiceSelect) {
+                    tsServiceSelect.setValue(newId);
+                    // Como Tom Select emite un evento 'change', no necesitamos dispararlo manualmente
+                }
             }
 
             showTemporaryMessage(`Servicio ${serviceData.name} ${isEditing ? 'actualizado' : 'guardado'} con éxito.`, 'success');
@@ -1308,9 +1242,7 @@
         }
         
         // --- LÓGICA DEL COTIZADOR ---
-        const quoteClientSelect = document.getElementById('quoteClient');
         const quoteRUCInput = document.getElementById('quoteRUC');
-        const serviceSelect = document.getElementById('serviceSelect');
         const quoteItemsBody = document.getElementById('quoteItems');
         const quoteNumberInput = document.getElementById('quoteNumber');
         const quoteNotesInput = document.getElementById('quoteNotes');
@@ -1327,7 +1259,8 @@
 
 
         function updateQuoteNumberPreview() {
-            const selectedClientId = quoteClientSelect.value;
+            // Se usa el valor actual de Tom Select (que se actualiza en el listener de 'change')
+            const selectedClientId = tsQuoteClient ? tsQuoteClient.getValue() : quoteClientSelect.value;
             const client = clients.find(c => c.id === selectedClientId);
             const clientCode = client ? client.code : 'CLIENTE';
             const sequential = quoteCounter.toString().padStart(4, '0');
@@ -1339,44 +1272,96 @@
             generateNotesBtn.disabled = quoteItemsData.length === 0;
         }
 
+        // FUNCIÓN MODIFICADA PARA USAR/INICIALIZAR TOM SELECT
         function updateClientDropdowns() {
             const selects = [quoteClientSelect, document.getElementById('contract-client-select')];
-            selects.forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Seleccione un cliente</option>';
+            
+            // 1. Destruir y recrear Tom Select para el cotizador
+            if (tsQuoteClient) {
+                tsQuoteClient.destroy();
+                tsQuoteClient = null;
+            }
+            
+            // 2. Limpiar el SELECT de cotizador para llenarlo
+            quoteClientSelect.innerHTML = '<option value="">Seleccione un cliente</option>';
+            clients.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = `${client.name} (${client.code})`;
+                quoteClientSelect.appendChild(option);
+            });
+
+            // 3. Inicializar Tom Select en el select del cotizador
+            tsQuoteClient = new TomSelect(quoteClientSelect, {
+                create: false,
+                sortField: { field: "text", direction: "asc" },
+                placeholder: 'Buscar cliente por nombre o código...',
+            });
+            
+            // 4. Añadir el listener de cambio (Tom Select emite 'change' en el select original)
+            tsQuoteClient.on('change', () => {
+                const selectedClientId = tsQuoteClient.getValue();
+                const client = clients.find(c => c.id === selectedClientId);
+                quoteRUCInput.value = client ? client.ruc : '';
+                updateQuoteNumberPreview();
+
+                // Asegurar que el select NO-TS también se actualice si es necesario (e.g., contratos)
+                const contractClientSelect = document.getElementById('contract-client-select');
+                if (contractClientSelect && selectedClientId && contractClientSelect.querySelector(`option[value="${selectedClientId}"]`)) {
+                    contractClientSelect.value = selectedClientId;
+                    contractClientSelect.dispatchEvent(new Event('change'));
+                }
+            });
+
+            // 5. Actualizar los selectores NO-TS (como el de Contratos)
+            const contractClientSelect = document.getElementById('contract-client-select');
+            if (contractClientSelect) {
+                const currentValue = contractClientSelect.value;
+                contractClientSelect.innerHTML = '<option value="">Seleccione un cliente</option>';
                 clients.forEach(client => {
                     const option = document.createElement('option');
                     option.value = client.id;
                     option.textContent = `${client.name} (${client.code})`;
-                    select.appendChild(option);
+                    contractClientSelect.appendChild(option);
                 });
-                select.value = currentValue; // Mantener la selección
-            });
+                contractClientSelect.value = currentValue; // Mantener la selección
+            }
         }
         
-        quoteClientSelect.addEventListener('change', () => {
-            const selectedClientId = quoteClientSelect.value;
-            const client = clients.find(c => c.id === selectedClientId);
-            quoteRUCInput.value = client ? client.ruc : '';
-            updateQuoteNumberPreview();
-        });
-        
+        // FUNCIÓN MODIFICADA PARA USAR/INICIALIZAR TOM SELECT
         function updateServiceDropdown() {
-            const currentValue = serviceSelect.value;
+             // 1. Destruir y recrear Tom Select
+            if (tsServiceSelect) {
+                tsServiceSelect.destroy();
+                tsServiceSelect = null;
+            }
+
+            // 2. Limpiar el SELECT de servicios para llenarlo
             serviceSelect.innerHTML = '<option value="">Seleccione un servicio</option>';
             services.forEach(service => {
                 const option = document.createElement('option');
                 option.value = service.id;
-                option.textContent = `${service.name} - $${parseFloat(service.price).toFixed(2)}`;
+                option.textContent = `${service.name} (${service.code}) - $${parseFloat(service.price).toFixed(2)}`;
                 serviceSelect.appendChild(option);
             });
-            serviceSelect.value = currentValue; // Mantener la selección
+            
+            // 3. Inicializar Tom Select
+            tsServiceSelect = new TomSelect(serviceSelect, {
+                create: false,
+                sortField: { field: "text", direction: "asc" },
+                placeholder: 'Buscar servicio por nombre o código...',
+            });
+            
+            // 4. Reasignar el listener de cambio (Tom Select emite 'change' en el select original)
+            tsServiceSelect.on('change', updateServiceDetailPreview);
+
             // Asegurar que la vista previa esté vacía al cargar
             updateServiceDetailPreview();	
         }
 
         function updateServiceDetailPreview() {
-            const serviceId = serviceSelect.value;
+            // Obtener el valor de Tom Select
+            const serviceId = tsServiceSelect ? tsServiceSelect.getValue() : serviceSelect.value;
             const itemCustomDetail = document.getElementById('itemCustomDetail');
             
             if (!serviceId) {
@@ -1413,7 +1398,11 @@
             addServiceBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Añadir';
             addServiceBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
             addServiceBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-            serviceSelect.disabled = false; // Habilitar selector
+            // Habilitar y limpiar Tom Select (se hace con el método enable/disable del TS)
+            if (tsServiceSelect) {
+                tsServiceSelect.enable(); 
+                tsServiceSelect.clear();
+            }
             updateServiceDetailPreview(); // Limpiar campos y deshabilitar añadir si no hay servicio seleccionado
         }
         
@@ -1427,9 +1416,17 @@
             editItemIndexInput.value = index;
 
             // 2. Cargar datos en los campos de control
-            // Nota: No podemos seleccionar el <select> si el item es una copia customizada que no existe en el maestro
-            serviceSelect.value = item.id;	
-            serviceSelect.disabled = true; // Deshabilitar el selector mientras se edita un item específico de la cotización
+            // Deshabilitar el selector mientras se edita un item específico de la cotización
+            if (tsServiceSelect) {
+                // Intentamos seleccionar el valor, si existe. Si es un item custom, no existirá.
+                if (tsServiceSelect.getOption(item.id)) {
+                     tsServiceSelect.setValue(item.id);
+                } else {
+                    // Si no se encuentra, limpiar el select pero mantener la interfaz
+                    tsServiceSelect.clear();
+                }
+                tsServiceSelect.disable(); 
+            }
             
             serviceCodePreview.value = item.code || '';
             servicePricePreview.value = parseFloat(item.price).toFixed(2);
@@ -1468,14 +1465,16 @@
 
 
         function addServiceToQuote() {
-            const serviceId = serviceSelect.value;
+            // Obtener valor de Tom Select
+            const serviceId = tsServiceSelect ? tsServiceSelect.getValue() : serviceSelect.value;
             const customDetail = itemCustomDetail.value.trim();
             const adjustedPrice = parseFloat(servicePricePreview.value); // Capturar el precio editado
             
+            // Permitir agregar/actualizar incluso si no hay serviceId, si estamos en modo edición
             if (!serviceId && editingItemIndex === -1) { showTemporaryMessage('Por favor, seleccione un servicio.', 'error'); return; }
             if (isNaN(adjustedPrice) || adjustedPrice < 0) { showTemporaryMessage('Precio unitario no válido.', 'error'); return; }
 
-            // Usamos el servicio maestro para obtener nombre/código/costo, a menos que estemos en modo edición
+            // Usamos el servicio maestro para obtener nombre/código/costo
             const serviceMaster = services.find(s => s.id === serviceId);
             
             // El campo base de descripción puede haber sido editado directamente en el textarea de preview
@@ -1489,7 +1488,7 @@
             }
             
             const newOrUpdatedItem = {	
-                // Si estamos en modo edición, usamos los datos del ítem existente para el ID y el código
+                // Si estamos en modo edición, usamos los datos del ítem existente para el ID y el nombre
                 id: editingItemIndex !== -1 ? quoteItemsData[editingItemIndex].id : (serviceMaster ? serviceMaster.id : 'custom_edit'),
                 name: editingItemIndex !== -1 ? quoteItemsData[editingItemIndex].name : (serviceMaster ? serviceMaster.name : 'Artículo Personalizado'),
                 code: serviceCodePreview.value.toUpperCase() || 'CUSTOM', // Usar código editado/visualizado
@@ -1514,11 +1513,11 @@
             } else {
                 // MODO INSERCIÓN: Añadir o fusionar
                 
-                // Si no hay servicio maestro, no podemos fusionar
-                if (!serviceMaster) {
-                    quoteItemsData.push(newOrUpdatedItem);
-                } else {
-                    // Lógica de fusión: solo fusionar si no hay precio ajustado Y no hay detalle customizado
+                // Si no hay servicio maestro, no podemos fusionar (es un ítem custom que solo puede añadirse)
+                const isCustomItem = !serviceMaster;
+
+                if (!isCustomItem) {
+                     // Solo fusionar si no hay precio ajustado Y no hay detalle customizado
                     const isPriceAltered = adjustedPrice !== serviceMaster.price;	
                     const isCustomDetailUsed = customDetail.length > 0;
                     
@@ -1532,12 +1531,15 @@
                         // Item nuevo o item con ajustes personalizados
                         quoteItemsData.push(newOrUpdatedItem);
                     }
+                } else {
+                    // Item custom sin maestro, siempre se añade como nuevo
+                    quoteItemsData.push(newOrUpdatedItem);
                 }
                 
                 // Limpiar campos de previsualización y detalle para el siguiente ítem
                 itemCustomDetail.value = '';
-                serviceSelect.value = '';
-                updateServiceDetailPreview();
+                if(tsServiceSelect) tsServiceSelect.clear(); // Limpiar Tom Select
+                updateServiceDetailPreview(); // Limpiar campos y deshabilitar añadir
                 showTemporaryMessage(`Servicio añadido a la cotización.`, 'success');
             }
             
@@ -1692,67 +1694,75 @@
             showTemporaryMessage('Configuración guardada exitosamente.', 'success');
         });
         
-        // --- LÓGICA DE HISTORIAL ---
+        // --- LÓGICA DE HISTORIAL (MODIFICADA: Agregado filtro de tiempo) ---
         const quotesHistoryList = document.getElementById('quotesHistoryList');
         const historyClientFilterEl = document.getElementById('historyClientFilter');
 
-        function renderQuotesHistory(filterId = null) {
+        // Función para establecer el filtro de tiempo y refrescar el historial
+        function setHistoryFilter(filterType) {
+            currentHistoryFilter = filterType;
+            // Actualizar botones visualmente
+            document.querySelectorAll('#historial .no-print button').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+            });
+            const activeBtn = document.getElementById(`filter-${filterType}`);
+            if (activeBtn) {
+                 activeBtn.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                 activeBtn.classList.add('bg-indigo-600', 'text-white');
+            }
+
+            // Renderizar el historial con el nuevo filtro de tiempo
+            renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
+        }
+
+        // Función de renderizado principal del historial (MODIFICADA: Agregado filtro de tiempo)
+        function renderQuotesHistory(filterId = null, filterTime = 'all') {
             quotesHistoryList.innerHTML = '';
             
-            // *** NUEVO: Obtener todos los valores de los filtros ***
-            const searchTerm = document.getElementById('historySearchInput') ? document.getElementById('historySearchInput').value.toLowerCase() : '';
-            const startDateStr = document.getElementById('historyStartDate') ? document.getElementById('historyStartDate').value : '';
-            const endDateStr = document.getElementById('historyEndDate') ? document.getElementById('historyEndDate').value : '';
-            const statusFilter = document.getElementById('historyStatusFilter') ? document.getElementById('historyStatusFilter').value : '';
-            
-            const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : null;
-            const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null;
-
-            let filteredQuotes = [...quotesHistory];
+            let filteredQuotes = quotesHistory;
             historyClientFilterEl.textContent = ''; // Limpiar filtro por defecto
 
-            // 1. Filtro por Cliente (si viene de la pestaña Clientes)
+            // 1. Filtrar por Cliente (si aplica)
             if (filterId) {
-                filteredQuotes = filteredQuotes.filter(q => q.client.id === filterId);
+                filteredQuotes = quotesHistory.filter(q => q.client.id === filterId);
                 const client = clients.find(c => c.id === filterId);
                 if (client) {
                     historyClientFilterEl.textContent = `(Filtrando por: ${client.name})`;
                 }
             }
 
-            // 2. Filtro por Estado
-            if (statusFilter) {
-                filteredQuotes = filteredQuotes.filter(q => q.status === statusFilter);
-            }
+            // 2. Filtrar por Tiempo (si aplica)
+            if (filterTime !== 'all') {
+                const now = new Date();
+                let cutoffDate = new Date(now);
 
-            // 3. Filtro por Fechas
-            if (startDate || endDate) {
-                filteredQuotes = filteredQuotes.filter(q => {
-                    // Formato de fecha de emisión: DD/MM/AAAA
-                    const parts = q.issueDate.split('/');
-                    if (parts.length !== 3) return false; // Ignorar si el formato es incorrecto
-                    const [day, month, year] = parts;
-                    const quoteDate = new Date(`${year}-${month}-${day}T12:00:00`); // Usar mediodía para evitar problemas de zona horaria
-                    if (startDate && quoteDate < startDate) return false;
-                    if (endDate && quoteDate > endDate) return false;
-                    return true;
+                if (filterTime === 'last30days') {
+                    cutoffDate.setDate(now.getDate() - 30);
+                } else if (filterTime === 'last90days') {
+                    cutoffDate.setDate(now.getDate() - 90);
+                } else if (filterTime === 'lastyear') {
+                    cutoffDate.setFullYear(now.getFullYear() - 1);
+                }
+                
+                filteredQuotes = filteredQuotes.filter(quote => {
+                    // El formato de fecha es DD/MM/AAAA
+                    const parts = quote.issueDate.split('/');
+                    if (parts.length === 3) {
+                        // Crear una fecha en el formato YYYY-MM-DD para evitar problemas de zona horaria
+                        const quoteDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00Z`);
+                        return quoteDate >= cutoffDate;
+                    }
+                    return false; // Ignorar si la fecha no tiene el formato esperado
                 });
             }
 
-            // 4. Filtro por Búsqueda (Search)
-            if (searchTerm) {
-                filteredQuotes = filteredQuotes.filter(q => 
-                    (q.client.name && q.client.name.toLowerCase().includes(searchTerm)) ||
-                    (q.number && q.number.toLowerCase().includes(searchTerm))
-                );
-            }
-
-
             if (filteredQuotes.length === 0) {
-                quotesHistoryList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">No hay cotizaciones que coincidan con los filtros.</td></tr>`;
+                quotesHistoryList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">No hay cotizaciones en el historial ${filterId ? 'para este cliente' : ''} que coincidan con el filtro de tiempo.</td></tr>`;
             } else {
                 [...filteredQuotes].reverse().forEach(quote => {
                     const row = document.createElement('tr');
+                    // Nota: el atributo `status-${quote.status}` es usado para el CSS dinámico.
                     row.innerHTML = `
                         <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">${quote.number}</td>
                         <td class="px-4 py-3 whitespace-nowrap">${quote.client.name}</td>
@@ -1789,7 +1799,7 @@
             localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
             
             closeModal('deleteQuoteConfirmationModal');
-            renderQuotesHistory(historyClientFilterId);
+            renderQuotesHistory(historyClientFilterId, currentHistoryFilter); // Actualizar con filtros
             renderDashboard();
             showTemporaryMessage('Cotización eliminada permanentemente.', 'success');
         }
@@ -1799,8 +1809,8 @@
             if (quoteIndex > -1) {
                 quotesHistory[quoteIndex].status = newStatus;
                 localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
-                renderQuotesHistory(historyClientFilterId); // Volver a renderizar historial (respeta filtros)
-                renderDashboard(); // Actualizar dashboard
+                renderQuotesHistory(historyClientFilterId, currentHistoryFilter); // Actualizar con filtros
+                renderDashboard();
             }
         }
         
@@ -1812,7 +1822,11 @@
                 quotesHistory = quotesHistory.filter(q => q.id !== quoteId);
                 localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
 
-                quoteClientSelect.value = quote.client.id;
+                // Seleccionar cliente con Tom Select
+                if (tsQuoteClient) {
+                     tsQuoteClient.setValue(quote.client.id);
+                }
+
                 quoteItemsData = quote.items.map(item => ({	
                     id: item.id, name: item.name, description: item.description,	
                     price: item.price, quantity: item.quantity,
@@ -1821,8 +1835,7 @@
 
                 quoteNotesInput.value = quote.notes || '';
                 
-                const event = new Event('change');
-                quoteClientSelect.dispatchEvent(event);
+                // La actualización de RUC y número preview se hace automáticamente por el listener de Tom Select
                 
                 renderQuoteItems();
                 changeTab(null, 'cotizador'); // Pasa null como evento
@@ -1830,43 +1843,17 @@
             }
         }
 
-        // --- LÓGICA DEL DASHBOARD (MODIFICADA) ---
+        // --- LÓGICA DEL DASHBOARD ---
         function renderDashboard() {
-            
-            // *** NUEVO: Obtener fechas del filtro ***
-            const startDateStr = document.getElementById('dashStartDate').value;
-            const endDateStr = document.getElementById('dashEndDate').value;
-            
-            const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : null;
-            const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null;
-
-            let filteredQuotesHistory = [...quotesHistory];
-
-            // *** NUEVO: Aplicar filtro de fecha ***
-            if (startDate || endDate) {
-                filteredQuotesHistory = filteredQuotesHistory.filter(q => {
-                    // Formato de fecha de emisión: DD/MM/AAAA
-                    const parts = q.issueDate.split('/');
-                    if (parts.length !== 3) return false; // Ignorar si el formato es incorrecto
-                    const [day, month, year] = parts;
-                    const quoteDate = new Date(`${year}-${month}-${day}T12:00:00`); // Usar mediodía
-
-                    if (startDate && quoteDate < startDate) return false;
-                    if (endDate && quoteDate > endDate) return false;
-                    return true;
-                });
-            }
-
-            // *** MODIFICADO: Usar filteredQuotesHistory para todos los cálculos ***
-            const acceptedQuotes = filteredQuotesHistory.filter(q => q.status === 'Aceptada');
-            const totalSales = acceptedQuotes.reduce((sum, q) => sum + q.total, 0);
+            const acceptedQuotes = quotesHistory.filter(q => q.status === 'Aceptada');
+            const totalSales = acceptedQuotes.reduce((sum, q) => sum + q.total, 0); // CORREGIDO: Faltaba el paréntesis de cierre en el callback de reduce
             const averageSale = acceptedQuotes.length > 0 ? totalSales / acceptedQuotes.length : 0;
 
             document.getElementById('total-sales').textContent = `$${totalSales.toFixed(2)}`;
             document.getElementById('average-sale').textContent = `$${averageSale.toFixed(2)}`;
-            document.getElementById('total-quotes').textContent = filteredQuotesHistory.length; // Total de cotizaciones *filtradas*
+            document.getElementById('total-quotes').textContent = quotesHistory.length;
 
-            // Lógica del Best Seller (basada en cotizaciones aceptadas y filtradas)
+            // Best Seller Logic
             const salesByProduct = {};
             acceptedQuotes.forEach(q => {
                 q.items.forEach(item => {
@@ -1887,7 +1874,7 @@
             }
             document.getElementById('best-seller').textContent = bestSeller;
 
-            // Lógica del gráfico (basada en cotizaciones aceptadas y filtradas)
+            // Sales by month chart logic
             const salesByMonth = {};
             acceptedQuotes.forEach(q => {
                 // Formato de fecha de emisión: DD/MM/AAAA
@@ -1903,11 +1890,10 @@
             const chartData = Object.keys(salesByMonth).map(key => ({
                 month: key,
                 sales: salesByMonth[key]
-            })).sort((a, b) => new Date(a.month.split('-')[0], a.month.split('-')[1] - 1) - new Date(b.month.split('-')[0], b.month.split('-')[1] - 1));
+            })).sort((a, b) => new Date(a.month) - new Date(b.month));
             
             drawSalesChart(chartData);
         }
-
 
         function drawSalesChart(data) {
             const container = d3.select("#sales-chart-container");
@@ -1919,19 +1905,8 @@
             }
 
             const margin = {top: 20, right: 20, bottom: 70, left: 80};
-            // Asegurarse de que el contenedor tenga dimensiones antes de calcular
-            let width, height;
-            try {
-                 width = container.node().getBoundingClientRect().width - margin.left - margin.right;
-                 height = container.node().getBoundingClientRect().height - margin.top - margin.bottom;
-                 if (width <= 0) width = 300; // Fallback
-                 if (height <= 0) height = 200; // Fallback
-            } catch(e) {
-                console.warn("D3 container not ready, using fallback dimensions.");
-                width = 300;
-                height = 200;
-            }
-
+            const width = container.node().getBoundingClientRect().width - margin.left - margin.right;
+            const height = container.node().getBoundingClientRect().height - margin.top - margin.bottom;
 
             const svg = container.append("svg").attr("width", width + margin.left + margin.right).attr("height", height + margin.top + margin.bottom).append("g").attr("transform", `translate(${margin.left},${margin.top})`);
             const x = d3.scaleBand().range([0, width]).domain(data.map(d => d.month)).padding(0.2);
@@ -1951,7 +1926,7 @@
 
 
         function renderContractsPage(filterId = null) {
-            contractClientSelect.dispatchEvent(new Event('change')); // Recargar la lista de clientes
+            updateClientDropdowns(); // Recargar la lista de clientes (Tom Select para Cotizador, nativo para Contratos)
             
             contractClientFilterEl.textContent = '';
             if (filterId) {
@@ -2290,7 +2265,8 @@
         }
 
         function generatePrintableQuote() {
-            const client = clients.find(c => c.id === quoteClientSelect.value);
+            // Se usa el valor de Tom Select
+            const client = clients.find(c => c.id === (tsQuoteClient ? tsQuoteClient.getValue() : quoteClientSelect.value));
             if (!client) { showTemporaryMessage('Por favor, seleccione un cliente.', 'error'); return; }
             if (quoteItemsData.length === 0) { showTemporaryMessage('Por favor, añada al menos un servicio a la cotización.', 'error'); return; }
 
@@ -2329,7 +2305,7 @@
                 window.print();
                 quotesHistory.push(quoteRecord);
                 localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
-                renderQuotesHistory(historyClientFilterId);
+                renderQuotesHistory(historyClientFilterId, currentHistoryFilter); // Actualizar con filtros
                 quoteCounter++;
                 localStorage.setItem('quoteCounter', quoteCounter.toString());
                 updateQuoteNumberPreview();
@@ -2442,19 +2418,19 @@
             showTemporaryMessage(`Plantilla de ${dataType} descargada. Ábrela y llénala para importar.`, 'info');
         }
 
-        // *** FUNCIÓN MODIFICADA: Ahora usa IDs de los modales ***
+        // Función que se activa al seleccionar un archivo CSV (sin iniciar la carga)
         function handleFileChange(input, dataType) {
             // Determinar si estamos en el modal de clientes o en el modal de servicios
             const isClient = dataType === 'clients';
             
-            // *** MODIFICADO: Apuntar a los IDs de los modales ***
-            const loadBtnId = isClient ? 'loadClientsBtnModal' : 'loadServicesBtnModal';
-            const fileStatusElId = isClient ? 'client-selected-file-modal' : 'service-selected-file-modal';
-            const statusBoxElId = isClient ? 'client-structure-status-modal' : 'service-structure-status-modal';
-            const statusMsgElId = isClient ? 'client-status-message-modal' : 'service-status-message-modal';
-            const uploadIconElId = isClient ? 'client-upload-icon-modal' : 'service-upload-icon-modal';
-            const importBtnId = isClient ? 'importClientsBtnModal' : 'importServicesBtnModal';
-            const fileInputId = isClient ? 'importClientsCsvInputModal' : 'importServicesCsvInputModal';
+            // Los elementos que manejamos dinámicamente
+            const loadBtnId = isClient ? 'loadClientsBtn' : 'loadServicesBtnModal';
+            const fileStatusElId = isClient ? 'client-selected-file' : 'service-selected-file-modal';
+            const statusBoxElId = isClient ? 'client-structure-status' : 'service-structure-status-modal';
+            const statusMsgElId = isClient ? 'client-status-message' : 'service-status-message-modal';
+            const uploadIconElId = isClient ? 'client-upload-icon' : 'service-upload-icon-modal';
+            const importBtnId = isClient ? 'importClientsBtn' : 'importServicesBtnModal';
+            const fileInputId = isClient ? 'importClientsCsvInput' : 'importServicesCsvInputModal';
             
             // Obtener los elementos DOM
             const loadBtn = document.getElementById(loadBtnId);
@@ -2550,11 +2526,9 @@
             };
             reader.readAsText(file);
             
-            // Limpiamos el input del modal para que se pueda volver a seleccionar
+            // Limpiamos el input del modal de servicios si aplica, para que al cerrarlo y reabrirlo esté limpio
             if (dataType === 'services') {
                 document.getElementById('importServicesCsvInputModal').value = null;
-            } else if (dataType === 'clients') {
-                document.getElementById('importClientsCsvInputModal').value = null;
             }
         }
 
@@ -2566,7 +2540,7 @@
             }
 
             // Usamos el ID del botón de carga correspondiente
-            const loadBtnId = dataType === 'clients' ? 'loadClientsBtnModal' : 'loadServicesBtnModal';
+            const loadBtnId = dataType === 'clients' ? 'loadClientsBtn' : 'loadServicesBtnModal';
             const loadBtn = document.getElementById(loadBtnId);
             loadBtn.disabled = true; // Deshabilitar mientras se procesa
 
@@ -2604,7 +2578,6 @@
         }
 
         // Ejecuta la importación después de la confirmación del modal
-        // *** FUNCIÓN MODIFICADA: Limpia los IDs de los modales ***
         function processConfirmedImport(dataType, recordsToImport, mappings) {
             let existingData = dataType === 'clients' ? clients : services;
             let importCount = 0;
@@ -2667,7 +2640,6 @@
                 clients = existingData;
                 localStorage.setItem('clients', JSON.stringify(clients));
                 renderClients();
-                closeModal('clientImportModal'); // *** MODIFICADO: Cerrar modal de clientes ***
             } else if (dataType === 'services') {
                 services = existingData;
                 localStorage.setItem('services', JSON.stringify(services));
@@ -2677,15 +2649,15 @@
 
             // Limpieza y feedback
             activeImportData = null;
-            // *** MODIFICADO: Limpiar los estados de los inputs de CSV de los MODALES ***
+            // Limpiar los estados de los inputs de CSV para que se puedan volver a usar
             if (dataType === 'clients') {
-                document.getElementById('loadClientsBtnModal').disabled = true;
-                document.getElementById('client-structure-status-modal').classList.add('hidden');
-                document.getElementById('client-selected-file-modal').textContent = 'Ninguno';
-                document.getElementById('importClientsBtnModal').classList.remove('btn-load-pending');
-                document.getElementById('importClientsBtnModal').classList.add('bg-amber-500', 'hover:bg-amber-600');	
-                document.getElementById('client-upload-icon-modal').classList.remove('fa-file-alt');
-                document.getElementById('client-upload-icon-modal').classList.add('fa-upload');
+                document.getElementById('loadClientsBtn').disabled = true;
+                document.getElementById('client-structure-status').classList.add('hidden');
+                document.getElementById('client-selected-file').textContent = 'Ninguno';
+                document.getElementById('importClientsBtn').classList.remove('btn-load-pending');
+                document.getElementById('importClientsBtn').classList.add('bg-amber-500', 'hover:bg-amber-600');	
+                document.getElementById('client-upload-icon').classList.remove('fa-file-alt');
+                document.getElementById('client-upload-icon').classList.add('fa-upload');
             } else if (dataType === 'services') {
                 document.getElementById('loadServicesBtnModal').disabled = true;
                 document.getElementById('service-structure-status-modal').classList.add('hidden');
@@ -2764,7 +2736,6 @@
         function showTemporaryMessage(message, type = 'info') {
             // Utilizamos el div de error del login para mostrar el mensaje temporalmente
             const el = document.getElementById('login-error');
-            if (!el) return; // Salir si el elemento no existe
             el.textContent = message;
             el.style.display = 'block';
             el.classList.remove('text-red-500', 'text-green-500', 'text-blue-500', 'bg-green-100', 'p-2', 'rounded-lg');
@@ -2896,12 +2867,17 @@
             changeClientView('compact');
             changeServiceView('compact');
             
+            // Renderizar y re-inicializar Tom Select
             renderClients();
             renderServices();
+
             renderQuoteItems();
             updateQuoteNumberPreview();
             loadSettings();
-            renderQuotesHistory(historyClientFilterId);
+            
+            // Establecer el filtro de historial por defecto y renderizar
+            setHistoryFilter(currentHistoryFilter); 
+            
             renderDashboard();
             renderContractsPage(contractClientFilterId);
             
@@ -2914,11 +2890,11 @@
             if (sessionStorage.getItem('isLoggedIn') === 'true') {
                 showApp();
                 initializeData();
+                setHistoryFilter('all'); // Asegurar que el filtro inicial sea 'Todo'
             }
             // Aseguramos que el estado inicial de los botones de carga sea correcto
-            // *** MODIFICADO: Apuntar a los botones de los modales ***
-            document.getElementById('loadClientsBtnModal').disabled = true;
-            document.getElementById('loadServicesBtnModal').disabled = true;
+            document.getElementById('loadClientsBtn').disabled = true;
+            document.getElementById('loadServicesBtnModal').disabled = true; // CAMBIADO a ID del Modal
 
             // Inicializar la validación de pagos al cargar
             document.getElementById('payment1Pct').oninput = validatePaymentSum;

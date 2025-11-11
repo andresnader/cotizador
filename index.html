@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Herramienta de Cotización v10</title>
+    <title>Herramienta de Cotización v11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carga de múltiples fuentes para selección -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
@@ -155,7 +155,7 @@
         </div>
     </div>
     
-    <!-- Modal de Confirmación para Importación -->
+    <!-- Modal de Confirmación para Importación (CSV/JSON) -->
     <div id="confirmation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
             <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Confirmar Importación</h3>
@@ -282,7 +282,7 @@
                     <label class="block text-sm font-medium text-gray-700">Cargo del Representante de EL PRESTADOR</label>
                     <input type="text" id="prestadorRepTitle" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Gerente General / Director Multimedia">
                 </div>
-                 <div>
+                   <div>
                     <label class="block text-sm font-medium text-gray-700">Cargo del Contacto de EL CLIENTE (Firma)</label>
                     <input type="text" id="clientContactTitle" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Ej: Director de Marketing / Gerente Administrativo">
                 </div>
@@ -304,7 +304,7 @@
                     <!-- Hito 2: Hito Intermedio (OPCIONAL) -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700">2. Pago Intermedio (Hito específico, 0% para omitir)</label>
-                         <div class="flex space-x-2 mt-1">
+                           <div class="flex space-x-2 mt-1">
                             <input type="number" id="payment2Pct" required class="w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm text-right" min="0" max="100" value="0" oninput="validatePaymentSum()">
                             <span class="p-2 bg-gray-100 rounded-lg">%</span>
                             <input type="text" id="payment2Hito" required class="w-2/3 p-2 border border-gray-300 rounded-lg shadow-sm" value="Entrega de Desarrollo Frontend">
@@ -313,7 +313,7 @@
                     <!-- Hito 3: Pago Final (OBLIGATORIO) -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700">3. Pago Final (a la finalización)</label>
-                         <div class="flex space-x-2 mt-1">
+                           <div class="flex space-x-2 mt-1">
                             <input type="number" id="payment3Pct" required class="w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm text-right" min="0" max="100" value="50" oninput="validatePaymentSum()">
                             <span class="p-2 bg-gray-100 rounded-lg">%</span>
                             <input type="text" id="payment3Hito" required class="w-2/3 p-2 border border-gray-300 rounded-lg shadow-sm" value="Aprobación Final y Puesta en Producción">
@@ -321,24 +321,60 @@
                     </div>
 
                     <div class="flex justify-between pt-2 text-sm font-bold border-t">
-                         <span>Suma Total de Porcentajes:</span>
-                         <span id="paymentSumTotal">100%</span>
+                        <span>Suma Total de Porcentajes:</span>
+                        <span id="paymentSumTotal">100%</span>
                     </div>
 
                     <!-- Frecuencia de Mantenimiento -->
                     <div class="pt-4 border-t">
-                         <label class="block text-sm font-medium text-gray-700">Frecuencia de Pagos por Mantenimiento Web</label>
-                         <select id="maintPaymentFreq" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                             <option value="mensual">mensual</option>
-                             <option value="trimestral">trimestral</option>
-                             <option value="anual">anual</option>
-                         </select>
+                        <label class="block text-sm font-medium text-gray-700">Frecuencia de Pagos por Mantenimiento Web</label>
+                        <select id="maintPaymentFreq" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                            <option value="mensual">mensual</option>
+                            <option value="trimestral">trimestral</option>
+                            <option value="anual">anual</option>
+                        </select>
                     </div>
 
                 </div>
 
                 <button type="submit" id="generateContractBtn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition shadow-md font-semibold mt-6"><i class="fas fa-file-pdf mr-2"></i> Generar Contrato PDF</button>
             </form>
+        </div>
+    </div>
+
+    <!-- NUEVO MODAL: IMPORTAR SERVICIOS -->
+    <div id="serviceImportModal" class="quick-modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-file-csv mr-2 text-indigo-600"></i> Importar Servicios CSV</h3>
+                <button onclick="closeModal('serviceImportModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Utilice el siguiente asistente para cargar servicios de manera masiva mediante un archivo CSV. Se recomienda descargar la plantilla.</p>
+
+            <div class="flex flex-col space-y-3">
+                <button onclick="downloadCsvTemplate('services')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm"><i class="fas fa-download mr-2"></i> Descargar Plantilla CSV</button>
+                
+                <div class="p-3 rounded-lg border text-sm transition duration-300" id="service-import-status-modal">
+                    <p class="text-gray-600">Archivo seleccionado: <span class="font-semibold text-gray-800" id="service-selected-file-modal">Ninguno</span>.</p>
+                    <div id="service-structure-status-modal" class="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded-md hidden">
+                        <i class="fas fa-file-csv mr-2"></i> <span id="service-status-message-modal">Seleccione un archivo CSV para validar e importar.</span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="file-upload-container">
+                        <button id="importServicesBtnModal" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
+                            <i class="fas fa-upload mr-2" id="service-upload-icon-modal"></i> 1. Archivo Seleccionado
+                        </button>
+                        <input type="file" id="importServicesCsvInputModal" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'services')">
+                    </div>
+                    <button id="loadServicesBtnModal" onclick="importCsvData('services')" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg shadow-sm disabled:opacity-50" disabled>
+                        2. Cargar Servicios
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-xs text-gray-500 mt-4">La importación se realizará cuando haga clic en el botón "2. Cargar Servicios" y confirme en la siguiente ventana.</p>
         </div>
     </div>
 
@@ -489,8 +525,8 @@
                              <label for="contract-text" class="block text-sm font-medium text-gray-700 mb-1">3. Redacte o pegue el contrato</label>
                              <textarea id="contract-text" rows="10" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Contenido del contrato..."></textarea>
                              <div class="flex space-x-4 mt-4">
-                                <button id="save-contract-btn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition" disabled>Guardar Contrato</button>
-                                <button id="prepare-contract-btn" onclick="prepareContractGeneration()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition" disabled><i class="fas fa-file-pdf mr-2"></i> Generar Contrato PDF</button>
+                                 <button id="save-contract-btn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition" disabled>Guardar Contrato</button>
+                                 <button id="prepare-contract-btn" onclick="prepareContractGeneration()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition" disabled><i class="fas fa-file-pdf mr-2"></i> Generar Contrato PDF</button>
                              </div>
                         </div>
                     </div>
@@ -542,7 +578,7 @@
                 </div>
             </div>
 
-            <!-- Pestaña: Servicios (Ahora solo lista y botones) -->
+            <!-- Pestaña: Servicios (MODIFICADA: Se mueve la importación a un botón/modal) -->
             <div id="servicios" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
                     <div class="flex justify-between items-center mb-6 border-b pb-4">
@@ -550,38 +586,13 @@
                         <div class="flex space-x-3">
                             <button onclick="changeServiceView('compact')" id="serviceViewCompactBtn" class="p-2 text-gray-600 hover:text-indigo-600 rounded-lg bg-gray-100 active"><i class="fas fa-th-list"></i></button>
                             <button onclick="changeServiceView('detailed')" id="serviceViewDetailedBtn" class="p-2 text-gray-400 hover:text-indigo-600 rounded-lg"><i class="fas fa-grip-horizontal"></i></button>
+                            <button onclick="showQuickModal('serviceImportModal')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition shadow-md font-semibold"><i class="fas fa-file-csv mr-2"></i>Importar CSV</button>
                             <button onclick="showServiceModal('create')" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md font-semibold"><i class="fas fa-plus mr-2"></i>Agregar Servicio</button>
                         </div>
                     </div>
                     
                     <div id="serviceViewContent">
                         <!-- Contenido dinámico (tabla o cards) se renderiza aquí -->
-                    </div>
-
-                    <div class="mt-8 pt-4 border-t max-w-lg">
-                        <h3 class="text-xl font-bold mb-4">Importar Servicios (CSV)</h3>
-                        <div class="flex flex-col space-y-3">
-                            <button onclick="downloadCsvTemplate('services')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm"><i class="fas fa-download mr-2"></i> Descargar Plantilla CSV</button>
-                            
-                            <div class="p-3 rounded-lg border text-sm transition duration-300" id="service-import-status">
-                                <p class="text-gray-600">Archivo seleccionado: <span class="font-semibold text-gray-800" id="service-selected-file">Ninguno</span>.</p>
-                                <div id="service-structure-status" class="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded-md hidden">
-                                    <i class="fas fa-file-csv mr-2"></i> <span id="service-status-message">Seleccione un archivo CSV para validar e importar.</span>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="file-upload-container">
-                                    <button id="importServicesBtn" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
-                                        <i class="fas fa-upload mr-2" id="service-upload-icon"></i> 1. Archivo Seleccionado
-                                    </button>
-                                    <input type="file" id="importServicesCsvInput" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'services')">
-                                </div>
-                                <button id="loadServicesBtn" onclick="importCsvData('services')" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg shadow-sm disabled:opacity-50" disabled>
-                                    2. Cargar Servicios
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -667,9 +678,11 @@
             if (modalId === 'confirmation-modal') {
                 activeImportData = null;
                 const clientLoadBtn = document.getElementById('loadClientsBtn');
-                const serviceLoadBtn = document.getElementById('loadServicesBtn');
-                clientLoadBtn.disabled = clientLoadBtn.classList.contains('bg-green-600') ? false : true;
-                serviceLoadBtn.disabled = serviceLoadBtn.classList.contains('bg-green-600') ? false : true;
+                const serviceLoadBtnModal = document.getElementById('loadServicesBtnModal');
+                
+                // Estos botones deben re-habilitarse si la validación previa fue exitosa (clase bg-green-600)
+                clientLoadBtn.disabled = !clientLoadBtn.classList.contains('bg-green-600');
+                serviceLoadBtnModal.disabled = !serviceLoadBtnModal.classList.contains('bg-green-600');
             }
             // Resetear errores del modal de contrato
             if (modalId === 'contractConfigModal') {
@@ -684,7 +697,7 @@
         const passwordInput = document.getElementById('password-input');
         const loginError = document.getElementById('login-error');
         
-        const CORRECT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'; 
+        const CORRECT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';	
 
         async function sha256(message) {
             const msgBuffer = new TextEncoder().encode(message);
@@ -758,7 +771,7 @@
             if (event && event.currentTarget) {
                 event.currentTarget.classList.add('active');
             } else {
-                 // Buscar y activar el botón de la pestaña
+                // Buscar y activar el botón de la pestaña
                 const targetButton = document.querySelector(`.tab-button[onclick*="'${tabName}'"]`);
                 if (targetButton) targetButton.classList.add('active');
             }
@@ -932,7 +945,7 @@
                     // LÓGICA DE AJUSTE DE TAMAÑO DE FUENTE
                     const nameLength = client.name ? client.name.length : 0;
                     // Se reduce el tamaño de fuente si el nombre supera los 30 caracteres
-                    const nameClass = nameLength > 30 ? 'text-lg' : 'text-xl'; 
+                    const nameClass = nameLength > 30 ? 'text-lg' : 'text-xl';	
 
                     const card = document.createElement('div');
                     card.className = 'client-card-detailed border border-gray-200 hover:shadow-lg transition duration-150 relative';
@@ -966,10 +979,10 @@
             const id = clientIdInput.value;
             const isEditing = !!id;
             
-            const clientData = { 
-                code: clientCodeInput.value.toUpperCase(), 
+            const clientData = {	
+                code: clientCodeInput.value.toUpperCase(),	
                 name: clientNameInput.value,
-                ruc: clientRUCInput.value, 
+                ruc: clientRUCInput.value,	
                 contact: clientContactInput.value,
                 phone: clientPhoneInput.value,
                 address: clientAddressInput.value,
@@ -994,8 +1007,8 @@
             
             // Si estaba en Cotizador y crea uno nuevo, lo selecciona automáticamente
             if (document.getElementById('cotizador').classList.contains('active') && !isEditing) {
-                 quoteClientSelect.value = newId;
-                 quoteClientSelect.dispatchEvent(new Event('change'));
+                quoteClientSelect.value = newId;
+                quoteClientSelect.dispatchEvent(new Event('change'));
             }
             
             showTemporaryMessage(`Cliente ${clientData.name} ${isEditing ? 'actualizado' : 'guardado'} con éxito.`, 'success');
@@ -1014,7 +1027,7 @@
         const serviceForm = document.getElementById('serviceForm');
         const serviceViewContent = document.getElementById('serviceViewContent');
         const serviceIdInput = document.getElementById('serviceId');
-        const serviceCodeInput = document.getElementById('serviceCode'); 
+        const serviceCodeInput = document.getElementById('serviceCode');	
         const serviceNameInput = document.getElementById('serviceName');
         const serviceDescriptionInput = document.getElementById('serviceDescription');
         const servicePriceInput = document.getElementById('servicePrice');
@@ -1140,10 +1153,10 @@
             const id = serviceIdInput.value;
             const isEditing = !!id;
 
-            const serviceData = { 
-                code: serviceCodeInput.value.toUpperCase(), 
-                name: serviceNameInput.value, 
-                description: serviceDescriptionInput.value, 
+            const serviceData = {	
+                code: serviceCodeInput.value.toUpperCase(),	
+                name: serviceNameInput.value,	
+                description: serviceDescriptionInput.value,	
                 price: parseFloat(servicePriceInput.value),
                 category: serviceCategoryInput.value,
                 cost: parseFloat(serviceCostInput.value)
@@ -1167,8 +1180,8 @@
             
             // Si estaba en Cotizador y crea uno nuevo, lo selecciona automáticamente
             if (document.getElementById('cotizador').classList.contains('active') && !isEditing) {
-                 serviceSelect.value = newId;
-                 updateServiceDetailPreview();
+                serviceSelect.value = newId;
+                updateServiceDetailPreview();
             }
 
             showTemporaryMessage(`Servicio ${serviceData.name} ${isEditing ? 'actualizado' : 'guardado'} con éxito.`, 'success');
@@ -1247,7 +1260,7 @@
             });
             serviceSelect.value = currentValue; // Mantener la selección
             // Asegurar que la vista previa esté vacía al cargar
-            updateServiceDetailPreview(); 
+            updateServiceDetailPreview();	
         }
 
         function updateServiceDetailPreview() {
@@ -1268,7 +1281,7 @@
             if (service) {
                 serviceCodePreview.value = service.code || '';
                 // Se muestra el precio con formato, pero el input es tipo number para edición
-                servicePricePreview.value = parseFloat(service.price).toFixed(2); 
+                servicePricePreview.value = parseFloat(service.price).toFixed(2);	
                 serviceDescriptionPreview.value = service.description || '';
                 itemCustomDetail.value = ''; // Limpiar detalle al seleccionar nuevo servicio
                 addServiceBtn.disabled = false;
@@ -1303,7 +1316,7 @@
 
             // 2. Cargar datos en los campos de control
             // Nota: No podemos seleccionar el <select> si el item es una copia customizada que no existe en el maestro
-            serviceSelect.value = item.id; 
+            serviceSelect.value = item.id;	
             serviceSelect.disabled = true; // Deshabilitar el selector mientras se edita un item específico de la cotización
             
             serviceCodePreview.value = item.code || '';
@@ -1321,7 +1334,7 @@
                 customDetail = item.description.substring(detailIndex + detailMarker.length).trim();
                 baseDesc = item.description.substring(0, detailIndex).trim().replace('\n\n', '');
             } else {
-                 // Si no tiene marcador o está vacío, la descripción completa es la base
+                // Si no tiene marcador o está vacío, la descripción completa es la base
                 baseDesc = item.description;
                 customDetail = '';
             }
@@ -1354,7 +1367,7 @@
             const serviceMaster = services.find(s => s.id === serviceId);
             
             // El campo base de descripción puede haber sido editado directamente en el textarea de preview
-            const baseDescription = serviceDescriptionPreview.value.trim(); 
+            const baseDescription = serviceDescriptionPreview.value.trim();	
             
             // Construir la descripción final: Descripción base + Detalle opcional
             let finalDescription = baseDescription || '';
@@ -1363,14 +1376,14 @@
                 finalDescription = (finalDescription ? finalDescription + '\n\n' : '') + `DETALLE ADICIONAL: ${customDetail}`;
             }
             
-            const newOrUpdatedItem = { 
+            const newOrUpdatedItem = {	
                 // Si estamos en modo edición, usamos los datos del ítem existente para el ID y el código
                 id: editingItemIndex !== -1 ? quoteItemsData[editingItemIndex].id : (serviceMaster ? serviceMaster.id : 'custom_edit'),
                 name: editingItemIndex !== -1 ? quoteItemsData[editingItemIndex].name : (serviceMaster ? serviceMaster.name : 'Artículo Personalizado'),
                 code: serviceCodePreview.value.toUpperCase() || 'CUSTOM', // Usar código editado/visualizado
-                description: finalDescription, 
-                price: adjustedPrice, 
-                quantity: 1, 
+                description: finalDescription,	
+                price: adjustedPrice,	
+                quantity: 1,	
                 category: serviceMaster ? serviceMaster.category : '',
                 cost: serviceMaster ? serviceMaster.cost : 0.00
             };
@@ -1394,7 +1407,7 @@
                     quoteItemsData.push(newOrUpdatedItem);
                 } else {
                     // Lógica de fusión: solo fusionar si no hay precio ajustado Y no hay detalle customizado
-                    const isPriceAltered = adjustedPrice !== serviceMaster.price; 
+                    const isPriceAltered = adjustedPrice !== serviceMaster.price;	
                     const isCustomDetailUsed = customDetail.length > 0;
                     
                     const existingItemIndex = quoteItemsData.findIndex(item => item.id === serviceId);
@@ -1452,7 +1465,7 @@
             const newPrice = parseFloat(price);
             if (isNaN(newPrice) || newPrice < 0) {
                 // Para evitar que el campo se quede en NaN si el usuario borra todo, lo dejamos en 0.
-                quoteItemsData[index].price = 0; 
+                quoteItemsData[index].price = 0;	
             } else {
                 quoteItemsData[index].price = newPrice;
             }
@@ -1563,7 +1576,7 @@
 
             localStorage.setItem('companySettings', JSON.stringify(companySettings));
             // Re-aplicar estilos después de guardar
-            loadSettings(); 
+            loadSettings();	
             showTemporaryMessage('Configuración guardada exitosamente.', 'success');
         });
         
@@ -1650,8 +1663,8 @@
                 localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
 
                 quoteClientSelect.value = quote.client.id;
-                quoteItemsData = quote.items.map(item => ({ 
-                    id: item.id, name: item.name, description: item.description, 
+                quoteItemsData = quote.items.map(item => ({	
+                    id: item.id, name: item.name, description: item.description,	
                     price: item.price, quantity: item.quantity,
                     category: item.category, cost: item.cost
                 }));
@@ -1721,7 +1734,7 @@
 
         function drawSalesChart(data) {
             const container = d3.select("#sales-chart-container");
-            container.selectAll("*").remove(); 
+            container.selectAll("*").remove();	
 
             if (data.length === 0) {
                 container.append("div").attr("class", "flex items-center justify-center h-full text-gray-500").text("No hay ventas aceptadas para mostrar en el gráfico.");
@@ -1754,7 +1767,7 @@
             
             contractClientFilterEl.textContent = '';
             if (filterId) {
-                 const client = clients.find(c => c.id === filterId);
+                const client = clients.find(c => c.id === filterId);
                 if (client) {
                     contractClientFilterEl.textContent = `(Filtrando por: ${client.name})`;
                     contractClientSelect.value = filterId; // Preseleccionar el cliente
@@ -1843,8 +1856,8 @@
         function prepareContractGeneration() {
             const quoteId = contractQuoteSelect.value;
             if (!quoteId) {
-                 showTemporaryMessage('Debe seleccionar una cotización aceptada para generar un contrato.', 'error');
-                 return;
+                showTemporaryMessage('Debe seleccionar una cotización aceptada para generar un contrato.', 'error');
+                return;
             }
             
             // Pre-cargar valores por defecto de la empresa (si existen)
@@ -1854,21 +1867,21 @@
             // Si ya existe un contrato guardado para esta cotización, podríamos precargar otros campos de tiempo
             const existingContract = contracts.find(c => c.quoteId === quoteId);
             if (existingContract && existingContract.config) {
-                 const config = existingContract.config;
-                 document.getElementById('devTerm').value = config.devTerm || 30;
-                 document.getElementById('devTimeUnit').value = config.devTimeUnit || 'días';
-                 document.getElementById('maintTerm').value = config.maintTerm || 12;
-                 document.getElementById('maintTimeUnit').value = config.maintTimeUnit || 'meses';
-                 document.getElementById('noticeDays').value = config.noticeDays || 30;
-                 document.getElementById('clientContactTitle').value = config.clientContactTitle || '';
-                 
-                 document.getElementById('payment1Pct').value = config.paymentSchedule[0].pct || 50;
-                 document.getElementById('payment1Hito').value = config.paymentSchedule[0].hito || 'Diseño y Planificación Aprobada';
-                 document.getElementById('payment2Pct').value = config.paymentSchedule[1].pct || 0;
-                 document.getElementById('payment2Hito').value = config.paymentSchedule[1].hito || 'Entrega de Desarrollo Frontend';
-                 document.getElementById('payment3Pct').value = config.paymentSchedule[2].pct || 50;
-                 document.getElementById('payment3Hito').value = config.paymentSchedule[2].hito || 'Aprobación Final y Puesta en Producción';
-                 document.getElementById('maintPaymentFreq').value = config.maintPaymentFreq || 'mensual';
+                const config = existingContract.config;
+                document.getElementById('devTerm').value = config.devTerm || 30;
+                document.getElementById('devTimeUnit').value = config.devTimeUnit || 'días';
+                document.getElementById('maintTerm').value = config.maintTerm || 12;
+                document.getElementById('maintTimeUnit').value = config.maintTimeUnit || 'meses';
+                document.getElementById('noticeDays').value = config.noticeDays || 30;
+                document.getElementById('clientContactTitle').value = config.clientContactTitle || '';
+                
+                document.getElementById('payment1Pct').value = config.paymentSchedule[0].pct || 50;
+                document.getElementById('payment1Hito').value = config.paymentSchedule[0].hito || 'Diseño y Planificación Aprobada';
+                document.getElementById('payment2Pct').value = config.paymentSchedule[1].pct || 0;
+                document.getElementById('payment2Hito').value = config.paymentSchedule[1].hito || 'Entrega de Desarrollo Frontend';
+                document.getElementById('payment3Pct').value = config.paymentSchedule[2].pct || 50;
+                document.getElementById('payment3Hito').value = config.paymentSchedule[2].hito || 'Aprobación Final y Puesta en Producción';
+                document.getElementById('maintPaymentFreq').value = config.maintPaymentFreq || 'mensual';
 
             } else {
                 // Si no hay configuración previa, cargar valores iniciales y nombre de contacto del cliente
@@ -1927,7 +1940,7 @@
             const now = new Date().toLocaleDateString('es-EC');
 
             // 4. Formatear la tabla de pagos
-            const paymentDetailsHtml = config.paymentSchedule.map(p => 
+            const paymentDetailsHtml = config.paymentSchedule.map(p =>	
                 `<li>${p.pct}% al ${p.hito}.</li>`
             ).join('');
 
@@ -1960,7 +1973,7 @@
                     <h3 class="section-title">1. LAS PARTES</h3>
 
                     <div class="data-box">
-                        <p><strong>1.1. PRESTADOR DE SERVICIOS:</strong> ${cs.name}, con RUC/Identificación ${cs.ruc}, domiciliada en ${cs.address}, debidamente representada por ${config.prestadorRepName}, en su calidad de ${config.prestadorRepTitle}, en adelante denominado "EL PRESTADOR".</p>
+                        <p><strong>1.1. PRESTADOR DE SERVICIOS:</strong> ${cs.name}, con RUC/Identificación ${cs.ruc || 'N/A'}, domiciliada en ${cs.address}, debidamente representada por ${config.prestadorRepName}, en su calidad de ${config.prestadorRepTitle}, en adelante denominado "EL PRESTADOR".</p>
                         <p class="mt-2"><strong>1.2. CLIENTE:</strong> ${quote.client.name}, con RUC/Identificación ${quote.client.ruc}, domiciliado en ${quote.client.address || 'Pendiente Dirección'}, representado por ${quote.client.contact || 'Pendiente Contacto'}, en su calidad de ${config.clientContactTitle}, en adelante denominado "EL CLIENTE".</p>
                     </div>
 
@@ -2040,8 +2053,8 @@
             
             // 6. Imprimir el Contrato
             document.getElementById('print-area').innerHTML = contractTemplate;
-            setTimeout(() => { 
-                window.print(); 
+            setTimeout(() => {	
+                window.print();	
                 showTemporaryMessage(`Contrato de ${quote.client.name} generado y listo para guardar como PDF.`, 'success');
             }, 500);
         }
@@ -2108,17 +2121,17 @@
             const total = parseFloat((subtotal + iva).toFixed(2));
             
             const quoteRecord = {
-                id: `quote_${new Date().getTime()}`, 
-                number: finalQuoteNumber, 
-                issueDate: issueDate, 
-                validityDate: validityDate, 
-                client: { ...client }, 
+                id: `quote_${new Date().getTime()}`,	
+                number: finalQuoteNumber,	
+                issueDate: issueDate,	
+                validityDate: validityDate,	
+                client: { ...client },	
                 items: quoteItemsData.map(item => ({...item})), // Clonar items
-                subtotal: subtotal, 
-                iva: iva, 
-                total: total, 
-                notes: quoteNotesInput.value, 
-                status: 'Pendiente', 
+                subtotal: subtotal,	
+                iva: iva,	
+                total: total,	
+                notes: quoteNotesInput.value,	
+                status: 'Pendiente',	
                 companySettings: { ...companySettings }
             };
 
@@ -2243,13 +2256,27 @@
 
         // Función que se activa al seleccionar un archivo CSV (sin iniciar la carga)
         function handleFileChange(input, dataType) {
+            // Determinar si estamos en el modal de clientes o en el modal de servicios
+            const isClient = dataType === 'clients';
+            
+            // Los elementos que manejamos dinámicamente
+            const loadBtnId = isClient ? 'loadClientsBtn' : 'loadServicesBtnModal';
+            const fileStatusElId = isClient ? 'client-selected-file' : 'service-selected-file-modal';
+            const statusBoxElId = isClient ? 'client-structure-status' : 'service-structure-status-modal';
+            const statusMsgElId = isClient ? 'client-status-message' : 'service-status-message-modal';
+            const uploadIconElId = isClient ? 'client-upload-icon' : 'service-upload-icon-modal';
+            const importBtnId = isClient ? 'importClientsBtn' : 'importServicesBtnModal';
+            const fileInputId = isClient ? 'importClientsCsvInput' : 'importServicesCsvInputModal';
+            
+            // Obtener los elementos DOM
+            const loadBtn = document.getElementById(loadBtnId);
+            const fileStatusEl = document.getElementById(fileStatusElId);
+            const statusBoxEl = document.getElementById(statusBoxElId);
+            const statusMsgEl = document.getElementById(statusMsgElId);
+            const uploadIconEl = document.getElementById(uploadIconElId);
+            const importBtn = document.getElementById(importBtnId);
+            
             const file = input.files[0];
-            const loadBtn = document.getElementById(`load${dataType.charAt(0).toUpperCase() + dataType.slice(1)}Btn`);
-            const fileStatusEl = document.getElementById(`${dataType}-selected-file`);
-            const statusBoxEl = document.getElementById(`${dataType}-structure-status`);
-            const statusMsgEl = document.getElementById(`${dataType}-status-message`);
-            const uploadIconEl = document.getElementById(`${dataType}-upload-icon`);
-            const importBtn = document.getElementById(`import${dataType.charAt(0).toUpperCase() + dataType.slice(1)}Btn`);
 
             // 1. Resetear estados
             loadBtn.disabled = true;
@@ -2257,7 +2284,7 @@
             loadBtn.classList.add('bg-gray-400');
             statusBoxEl.classList.add('hidden');
             importBtn.classList.remove('btn-load-pending');
-            importBtn.classList.add('bg-amber-500', 'hover:bg-amber-600'); 
+            importBtn.classList.add('bg-amber-500', 'hover:bg-amber-600');	
             uploadIconEl.classList.remove('fa-file-alt');
             uploadIconEl.classList.add('fa-upload');
             
@@ -2310,7 +2337,7 @@
                             // Usamos el mapeo de servicios
                             const serviceName = firstRecord[CSV_MAPPINGS.services.code] || 'N/A'; // Nombre del servicio
                             const serviceDesc = firstRecord[CSV_MAPPINGS.services.description] || 'Sin descripción';
-                            message += `Se encontraron ${validRecords} servicios. Previsualización: Nombre: ${serviceName}, Descripción: ${serviceDesc.substring(0, 50)}...`;
+                            message += `Se encontraron ${validRecords} servicios. Previsualización: Nombre: ${serviceName}, Precio: ${firstRecord[CSV_MAPPINGS.services.price] || 'N/A'}`;
                         }
                         
                         loadBtn.disabled = false; // Habilitar si es válido
@@ -2328,12 +2355,17 @@
                     console.error("Error parsing CSV:", error);
                     statusBoxEl.className = `mt-2 p-2 bg-red-100 text-red-800 rounded-md`;
                     statusMsgEl.innerHTML = `<i class="fas fa-times-circle mr-2"></i> ERROR CRÍTICO al leer el archivo. Verifique el formato de las celdas (especialmente las comillas dobles).`;
-                    statusBoxEl.classList.add('hidden');
+                    statusBoxEl.classList.remove('hidden');
                     loadBtn.disabled = true;
                     activeImportData = null;
                 }
             };
             reader.readAsText(file);
+            
+            // Limpiamos el input del modal de servicios si aplica, para que al cerrarlo y reabrirlo esté limpio
+            if (dataType === 'services') {
+                document.getElementById('importServicesCsvInputModal').value = null;
+            }
         }
 
         // Función que se activa al presionar el botón de "Cargar"
@@ -2343,13 +2375,15 @@
                 return;
             }
 
-            const loadBtn = document.getElementById(`load${dataType.charAt(0).toUpperCase() + dataType.slice(1)}Btn`);
+            // Usamos el ID del botón de carga correspondiente
+            const loadBtnId = dataType === 'clients' ? 'loadClientsBtn' : 'loadServicesBtnModal';
+            const loadBtn = document.getElementById(loadBtnId);
             loadBtn.disabled = true; // Deshabilitar mientras se procesa
 
             const recordsToImport = activeImportData.data;
             const mappings = CSV_MAPPINGS[dataType];
             
-            // Configurar Modal
+            // Configurar Modal de confirmación
             const modalTitle = document.getElementById('modal-title');
             const modalContent = document.getElementById('modal-content');
             const modalConfirmBtn = document.getElementById('modal-confirm-btn');
@@ -2366,7 +2400,7 @@
                     ` : `
                         <p class="text-xs mt-1">Código: ${recordsToImport[0][mappings.id]}</p>
                         <p class="text-xs">Nombre: ${recordsToImport[0][mappings.code]}</p>
-                        <p class="text-xs truncate max-w-full">Descripción: ${recordsToImport[0][mappings.description].substring(0, 100)}...</p>
+                        <p class="text-xs truncate max-w-full">Precio: ${recordsToImport[0][mappings.price]}</p>
                     `}
                 </div>
             `;
@@ -2406,18 +2440,27 @@
 
                 // Lógica de Duplicados
                 if (dataType === 'clients') {
+                    // Si 'ruc' no existe o es inválido, forzamos la creación de uno nuevo.
                     const ruc = newData.ruc;
-                    const existingIndex = existingData.findIndex(item => item.ruc === ruc);
-                    if (existingIndex > -1) {
-                        existingData[existingIndex] = { ...existingData[existingIndex], ...newData };
-                        isNew = false;
+                    if (ruc) {
+                        const existingIndex = existingData.findIndex(item => item.ruc === ruc);
+                        if (existingIndex > -1) {
+                            existingData[existingIndex] = { ...existingData[existingIndex], ...newData };
+                            isNew = false;
+                        }
+                    }
+                    // Asegurar que el código del cliente se genere si no existe
+                    if (!newData.code) {
+                        newData.code = generateClientCode(newData.name);
                     }
                 } else if (dataType === 'services') {
                     const code = newData.code;
-                    const existingIndex = existingData.findIndex(item => item.code === code);
-                    if (existingIndex > -1) {
-                        existingData[existingIndex] = { ...existingData[existingIndex], ...newData };
-                        isNew = false;
+                    if (code) {
+                        const existingIndex = existingData.findIndex(item => item.code === code);
+                        if (existingIndex > -1) {
+                            existingData[existingIndex] = { ...existingData[existingIndex], ...newData };
+                            isNew = false;
+                        }
                     }
                 }
 
@@ -2437,13 +2480,31 @@
                 services = existingData;
                 localStorage.setItem('services', JSON.stringify(services));
                 renderServices();
+                closeModal('serviceImportModal'); // Cerrar el modal de importación de servicios
             }
 
             // Limpieza y feedback
             activeImportData = null;
-            document.getElementById(`load${dataType.charAt(0).toUpperCase() + dataType.slice(1)}Btn`).disabled = true;
-            document.getElementById(`${dataType}-structure-status`).classList.add('hidden');
-            document.getElementById(`${dataType}-selected-file`).textContent = 'Ninguno';
+            // Limpiar los estados de los inputs de CSV para que se puedan volver a usar
+            if (dataType === 'clients') {
+                document.getElementById('loadClientsBtn').disabled = true;
+                document.getElementById('client-structure-status').classList.add('hidden');
+                document.getElementById('client-selected-file').textContent = 'Ninguno';
+                document.getElementById('importClientsBtn').classList.remove('btn-load-pending');
+                document.getElementById('importClientsBtn').classList.add('bg-amber-500', 'hover:bg-amber-600');	
+                document.getElementById('client-upload-icon').classList.remove('fa-file-alt');
+                document.getElementById('client-upload-icon').classList.add('fa-upload');
+            } else if (dataType === 'services') {
+                document.getElementById('loadServicesBtnModal').disabled = true;
+                document.getElementById('service-structure-status-modal').classList.add('hidden');
+                document.getElementById('service-selected-file-modal').textContent = 'Ninguno';
+                document.getElementById('importServicesBtnModal').classList.remove('btn-load-pending');
+                document.getElementById('importServicesBtnModal').classList.add('bg-amber-500', 'hover:bg-amber-600');	
+                document.getElementById('service-upload-icon-modal').classList.remove('fa-file-alt');
+                document.getElementById('service-upload-icon-modal').classList.add('fa-upload');
+            }
+
+
             showTemporaryMessage(`¡Importación CSV exitosa! Se procesaron ${importCount} registros de ${dataType}.`, 'success');
         }
 
@@ -2502,7 +2563,7 @@
             };
             reader.readAsText(file);
             // Limpiamos el input después de la lectura para que el evento onchange se dispare de nuevo si se selecciona el mismo archivo
-            input.value = null; 
+            input.value = null;	
         }
         
         // --- UTILIDADES GLOBALES (Notificación) ---
@@ -2663,7 +2724,7 @@
             }
             // Aseguramos que el estado inicial de los botones de carga sea correcto
             document.getElementById('loadClientsBtn').disabled = true;
-            document.getElementById('loadServicesBtn').disabled = true;
+            document.getElementById('loadServicesBtnModal').disabled = true; // CAMBIADO a ID del Modal
 
             // Inicializar la validación de pagos al cargar
             document.getElementById('payment1Pct').oninput = validatePaymentSum;

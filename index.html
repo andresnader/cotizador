@@ -331,10 +331,6 @@
                 <div><label for="servicePrice" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Precio Unitario ($) *</label><input type="number" step="0.01" id="servicePrice" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white"></div>
                 <div><label for="serviceCost" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Costo Interno ($)</label><input type="number" step="0.01" id="serviceCost" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" value="0.00"></div>
                 <div><label for="serviceDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label><textarea id="serviceDescription" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white"></textarea></div>
-                 <button id="generateDescBtn" onclick="generateServiceDescription(event)" type="button" class="w-full bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition duration-300 shadow-sm disabled:opacity-50">
-                    ✨ Generar Descripción con IA
-                </button>
-                <p id="desc-status" class="text-sm mt-2 text-gray-500 hidden dark:text-gray-400"></p>
                 <button type="submit" id="serviceSubmitBtn" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Guardar Servicio</button>
             </form>
         </div>
@@ -445,6 +441,41 @@
 
                 <button type="submit" id="generateContractBtn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition shadow-md font-semibold mt-6"><i class="fas fa-file-pdf mr-2"></i> Generar Contrato PDF</button>
             </form>
+        </div>
+    </div>
+
+    <div id="clientImportModal" class="quick-modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto dark:bg-gray-700 dark:text-white">
+            <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-600">
+                <h3 class="text-xl font-bold text-gray-800 dark:text-white"><i class="fas fa-file-csv mr-2 text-indigo-600"></i> Importar Clientes CSV</h3>
+                <button onclick="closeModal('clientImportModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4 dark:text-gray-400">Utilice este asistente para cargar clientes de manera masiva mediante un archivo CSV. Se recomienda descargar la plantilla para asegurar el formato correcto.</p>
+
+            <div class="flex flex-col space-y-3">
+                <button onclick="downloadCsvTemplate('clients')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm"><i class="fas fa-download mr-2"></i> Descargar Plantilla CSV</button>
+
+                <div class="p-3 rounded-lg border text-sm transition duration-300 dark:border-gray-600" id="client-import-status-modal">
+                    <p class="text-gray-600 dark:text-gray-400">Archivo seleccionado: <span class="font-semibold text-gray-800 dark:text-white" id="client-selected-file-modal">Ninguno</span>.</p>
+                    <div id="client-structure-status-modal" class="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded-md hidden dark:bg-yellow-900/50 dark:text-yellow-300">
+                        <i class="fas fa-file-csv mr-2"></i> <span id="client-status-message-modal">Seleccione un archivo CSV para validar e importar.</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="file-upload-container">
+                        <button id="importClientsBtnModal" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
+                            <i class="fas fa-upload mr-2" id="client-upload-icon-modal"></i> 1. Archivo Seleccionado
+                        </button>
+                        <input type="file" id="importClientsCsvInputModal" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'clients')">
+                    </div>
+                    <button id="loadClientsBtnModal" onclick="importCsvData('clients')" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg shadow-sm disabled:opacity-50">
+                        2. Cargar Clientes
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-xs text-gray-500 mt-4 dark:text-gray-400">La importación se realizará cuando haga clic en el botón "2. Cargar Clientes" y confirme en la ventana emergente.</p>
         </div>
     </div>
 
@@ -571,10 +602,6 @@
                         <div class="mt-6">
                             <label for="quoteNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notas Adicionales para esta Cotización</label>
                             <textarea id="quoteNotes" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white" placeholder="Ej: Términos y condiciones, detalles específicos del proyecto..."></textarea>
-                            <button id="generateNotesBtn" onclick="generateQuoteNotes()" class="mt-2 w-full bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition duration-300 shadow-sm disabled:opacity-50" disabled>
-                                ✨ Generar Notas con IA
-                            </button>
-                            <p id="notes-status" class="text-sm mt-2 text-gray-500 hidden dark:text-gray-400"></p>
                         </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-lg h-fit dark:bg-gray-700">
@@ -682,38 +709,13 @@
                         <div class="flex space-x-3">
                             <button onclick="changeClientView('compact')" id="clientViewCompactBtn" class="p-2 text-gray-600 hover:text-indigo-600 rounded-lg bg-gray-100 active dark:bg-gray-600 dark:text-gray-300"><i class="fas fa-th-list"></i></button>
                             <button onclick="changeClientView('detailed')" id="clientViewDetailedBtn" class="p-2 text-gray-400 hover:text-indigo-600 rounded-lg dark:hover:text-indigo-400"><i class="fas fa-grip-horizontal"></i></button>
+                            <button onclick="showQuickModal('clientImportModal')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition shadow-md font-semibold"><i class="fas fa-file-csv mr-2"></i>Importar CSV</button>
                             <button onclick="showClientModal('create')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md font-semibold"><i class="fas fa-user-plus mr-2"></i>Agregar Cliente</button>
                         </div>
                     </div>
 
                     <div id="clientViewContent">
                         <!-- Contenido dinámico (tabla o cards) se renderiza aquí -->
-                    </div>
-                    
-                    <div class="mt-8 pt-4 border-t max-w-lg border-gray-200 dark:border-gray-600">
-                        <h3 class="text-xl font-bold mb-4 dark:text-white">Importar Clientes (CSV)</h3>
-                        <div class="flex flex-col space-y-3">
-                            <button onclick="downloadCsvTemplate('clients')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm"><i class="fas fa-download mr-2"></i> Descargar Plantilla CSV</button>
-                            
-                            <div class="p-3 rounded-lg border text-sm transition duration-300 dark:border-gray-600" id="client-import-status">
-                                <p class="text-gray-600 dark:text-gray-400">Archivo seleccionado: <span class="font-semibold text-gray-800 dark:text-white" id="client-selected-file">Ninguno</span>.</p>
-                                <div id="client-structure-status" class="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded-md hidden dark:bg-yellow-900/50 dark:text-yellow-300">
-                                    <i class="fas fa-file-csv mr-2"></i> <span id="client-status-message">Seleccione un archivo CSV para validar e importar.</span>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="file-upload-container">
-                                    <button id="importClientsBtn" class="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
-                                        <i class="fas fa-upload mr-2" id="client-upload-icon"></i> 1. Archivo Seleccionado
-                                    </button>
-                                    <input type="file" id="importClientsCsvInput" accept=".csv" class="file-upload-input" onchange="handleFileChange(this, 'clients')">
-                                </div>
-                                <button id="loadClientsBtn" onclick="importCsvData('clients')" class="w-full bg-gray-400 text-white px-4 py-2 rounded-lg shadow-sm disabled:opacity-50">
-                                    2. Cargar Clientes
-                                </button>
-                            </div>
-                        </div>
                     </div>
 
                 </div>
@@ -826,11 +828,15 @@
             document.getElementById(modalId).classList.add('hidden');
             if (modalId === 'confirmation-modal') {
                 activeImportData = null;
-                const clientLoadBtn = document.getElementById('loadClientsBtn');
+                const clientLoadBtn = document.getElementById('loadClientsBtnModal');
                 const serviceLoadBtnModal = document.getElementById('loadServicesBtnModal');
-                
-                clientLoadBtn.disabled = !clientLoadBtn.classList.contains('bg-green-600');
-                serviceLoadBtnModal.disabled = !serviceLoadBtnModal.classList.contains('bg-green-600');
+
+                if (clientLoadBtn) {
+                    clientLoadBtn.disabled = !clientLoadBtn.classList.contains('bg-green-600');
+                }
+                if (serviceLoadBtnModal) {
+                    serviceLoadBtnModal.disabled = !serviceLoadBtnModal.classList.contains('bg-green-600');
+                }
             }
             if (modalId === 'contractConfigModal') {
                 document.getElementById('paymentSumError').style.display = 'none';
@@ -1176,7 +1182,6 @@
             if (mode === 'create') {
                 serviceModalTitle.textContent = 'Crear Nuevo Servicio';
                 serviceSubmitBtn.textContent = 'Guardar Servicio';
-                document.getElementById('desc-status').classList.add('hidden');
             } else if (mode === 'edit' && id) {
                 const service = services.find(s => s.id === id);
                 if (!service) return;
@@ -1191,7 +1196,6 @@
                 servicePriceInput.value = service.price;
                 serviceCategoryInput.value = service.category;
                 serviceCostInput.value = service.cost;
-                document.getElementById('desc-status').classList.add('hidden');
             }
             
             showQuickModal('serviceFormModal');
@@ -1327,8 +1331,6 @@
         const quoteItemsBody = document.getElementById('quoteItems');
         const quoteNumberInput = document.getElementById('quoteNumber');
         const quoteNotesInput = document.getElementById('quoteNotes');
-        const generateNotesBtn = document.getElementById('generateNotesBtn');
-        const notesStatus = document.getElementById('notes-status');
         
         const serviceCodePreview = document.getElementById('serviceCodePreview');
         const servicePricePreview = document.getElementById('servicePricePreview');
@@ -1346,8 +1348,6 @@
             const now = new Date();
             const dateStr = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
             quoteNumberInput.value = `${clientCode}-${dateStr}-${sequential}`;
-            
-            generateNotesBtn.disabled = quoteItemsData.length === 0;
         }
 
         function updateClientDropdowns() {
@@ -1578,7 +1578,6 @@
             quoteItemsBody.innerHTML = '';
             if (quoteItemsData.length === 0) {
                 quoteItemsBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500 dark:text-gray-400">Añada servicios a la cotización.</td></tr>`;
-                generateNotesBtn.disabled = true;
             } else {
                 quoteItemsData.forEach((item, index) => {
                     const itemDisplay = `<div class="font-medium text-gray-800 dark:text-white">${item.name} (${item.code})</div><div class="text-xs text-gray-500 mt-1 whitespace-pre-wrap dark:text-gray-400">${item.description || ''}</div>`;
@@ -1590,7 +1589,6 @@
                     row.innerHTML = `<td class="px-4 py-3 whitespace-normal align-top">${itemDisplay}</td><td class="px-4 py-3 align-top">${quantityInput}</td><td class="px-4 py-3 whitespace-nowrap align-top">${priceInput}</td><td class="px-4 py-3 whitespace-nowrap font-medium align-top">$${(item.price * item.quantity).toFixed(2)}</td><td class="px-4 py-3 whitespace-nowrap text-right align-top"><button onclick="loadQuoteItemForEdit(${index})" class="text-blue-600 hover:text-blue-900 mr-2" title="Editar ítem"><i class="fas fa-pencil-alt"></i></button><button onclick="removeQuoteItem(${index})" class="text-red-600 hover:text-red-900" title="Eliminar ítem"><i class="fas fa-trash"></i></button></td>`;
                     quoteItemsBody.appendChild(row);
                 });
-                generateNotesBtn.disabled = false;
             }
             calculateTotals();
         }
@@ -1630,8 +1628,6 @@
             document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
             document.getElementById('iva').textContent = `$${iva.toFixed(2)}`;
             document.getElementById('total').textContent = `$${total.toFixed(2)}`;
-            
-            generateNotesBtn.disabled = total <= 0;
         }
 
         // --- LÓGICA DE CONFIGURACIÓN (ACTUALIZADA con Theme) ---
@@ -2473,98 +2469,6 @@
             }
         };
 
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=`;
-        const API_KEY = "";
-
-        async function callGeminiApi(systemPrompt, userQuery, maxRetries = 3) {
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-            };
-            
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
-                try {
-                    const response = await fetch(API_URL + API_KEY, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text) return text.trim();
-                    }
-                    
-                    if (response.status === 429 && attempt < maxRetries - 1) {
-                        const delay = Math.pow(2, attempt) * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        continue;
-                    }
-                    
-                    throw new Error(`API Error: ${response.statusText}`);
-
-                } catch (error) {
-                    if (attempt === maxRetries - 1) throw error;
-                    const delay = Math.pow(2, attempt) * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-            throw new Error("Failed to call Gemini API after multiple retries.");
-        }
-        
-        async function generateServiceDescription(event) {
-             event.preventDefault();
-             const name = serviceNameInput.value;
-             const category = serviceCategoryInput.value || 'General';
-             if (!name) { showTemporaryMessage('Por favor, ingrese el Nombre del Servicio antes de generar la descripción.', 'error'); return; }
-             const generatorBtn = event.currentTarget;
-             generatorBtn.disabled = true;
-             document.getElementById('desc-status').textContent = 'Generando descripción con IA... (Puede tardar unos segundos)';
-             document.getElementById('desc-status').classList.remove('hidden');
-
-             const systemPrompt = "Eres un redactor de marketing digital experto en ventas de servicios web (diseño, hosting, SEO). Tu tarea es crear una descripción de producto corta, atractiva y orientada al valor para un servicio específico. NO incluyas encabezados, solo el texto descriptivo.";
-             const userQuery = `Crea una descripción para el servicio: ${name}. Categoría: ${category}. Enfócate en el beneficio para el cliente. Máximo 4 frases.`;
-
-             try {
-                 const generatedText = await callGeminiApi(systemPrompt, userQuery);
-                 serviceDescriptionInput.value = generatedText;
-                 document.getElementById('desc-status').textContent = '✅ Descripción generada con éxito.';
-             } catch (error) {
-                 console.error("Gemini API Error:", error);
-                 document.getElementById('desc-status').textContent = '❌ Error al generar la descripción. Intente de nuevo más tarde.';
-                 showTemporaryMessage('Error de conexión o API de Gemini. Consulte la consola para detalles.', 'error');
-             } finally {
-                 generatorBtn.disabled = false;
-                 setTimeout(() => document.getElementById('desc-status').classList.add('hidden'), 5000);
-             }
-        }
-
-        async function generateQuoteNotes() {
-             const subtotal = quoteItemsData.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2);
-             const itemsList = quoteItemsData.map(item => `${item.quantity}x ${item.name} ($${item.price.toFixed(2)})`).join(', ');
-             
-             generateNotesBtn.disabled = true;
-             notesStatus.textContent = 'Redactando notas y condiciones de pago con IA... (Puede tardar unos segundos)';
-             notesStatus.classList.remove('hidden');
-
-             const systemPrompt = "Eres un asistente de ventas profesional. Tu tarea es generar NOTAS FINALES para una cotización formal. Incluye: 1) Un breve resumen del proyecto. 2) Condiciones de pago sugeridas (Ej: 50% al iniciar, 50% a la entrega). 3) Una cláusula de validez (Ej: 30 días). Formatea el texto para un campo de notas, sin encabezados ni títulos.";
-             const userQuery = `La cotización incluye los siguientes items: ${itemsList}. Subtotal: $${subtotal}. Genera las notas.`;
-
-             try {
-                 const generatedText = await callGeminiApi(systemPrompt, userQuery);
-                 quoteNotesInput.value = generatedText;
-                 notesStatus.textContent = '✅ Notas generadas con éxito.';
-             } catch (error) {
-                 console.error("Gemini API Error:", error);
-                 notesStatus.textContent = '❌ Error al generar las notas. Intente de nuevo más tarde.';
-                 showTemporaryMessage('Error de conexión o API de Gemini.', 'error');
-             } finally {
-                 generateNotesBtn.disabled = false;
-                 setTimeout(() => notesStatus.classList.add('hidden'), 5000);
-             }
-        }
-        
         function previewLogo(input, previewId) {
             const file = input.files[0];
             const previewEl = document.getElementById(previewId);
@@ -2677,12 +2581,12 @@
 
         function handleFileChange(input, dataType) {
             const isClient = dataType === 'clients';
-            const loadBtnId = isClient ? 'loadClientsBtn' : 'loadServicesBtnModal';
-            const fileStatusElId = isClient ? 'client-selected-file' : 'service-selected-file-modal';
-            const statusBoxElId = isClient ? 'client-structure-status' : 'service-structure-status-modal';
-            const statusMsgElId = isClient ? 'client-status-message' : 'service-status-message-modal';
-            const uploadIconElId = isClient ? 'client-upload-icon' : 'service-upload-icon-modal';
-            const importBtnId = isClient ? 'importClientsBtn' : 'importServicesBtnModal';
+            const loadBtnId = isClient ? 'loadClientsBtnModal' : 'loadServicesBtnModal';
+            const fileStatusElId = isClient ? 'client-selected-file-modal' : 'service-selected-file-modal';
+            const statusBoxElId = isClient ? 'client-structure-status-modal' : 'service-structure-status-modal';
+            const statusMsgElId = isClient ? 'client-status-message-modal' : 'service-status-message-modal';
+            const uploadIconElId = isClient ? 'client-upload-icon-modal' : 'service-upload-icon-modal';
+            const importBtnId = isClient ? 'importClientsBtnModal' : 'importServicesBtnModal';
             
             const loadBtn = document.getElementById(loadBtnId);
             const fileStatusEl = document.getElementById(fileStatusElId);
@@ -2782,7 +2686,7 @@
                 return;
             }
 
-            const loadBtnId = dataType === 'clients' ? 'loadClientsBtn' : 'loadServicesBtnModal';
+            const loadBtnId = dataType === 'clients' ? 'loadClientsBtnModal' : 'loadServicesBtnModal';
             const loadBtn = document.getElementById(loadBtnId);
             loadBtn.disabled = true;
 
@@ -2875,6 +2779,7 @@
                 clients = existingData;
                 localStorage.setItem('clients', JSON.stringify(clients));
                 renderClients();
+                closeModal('clientImportModal');
             } else if (dataType === 'services') {
                 services = existingData;
                 localStorage.setItem('services', JSON.stringify(services));
@@ -2884,13 +2789,13 @@
 
             activeImportData = null;
             if (dataType === 'clients') {
-                document.getElementById('loadClientsBtn').disabled = true;
-                document.getElementById('client-structure-status').classList.add('hidden');
-                document.getElementById('client-selected-file').textContent = 'Ninguno';
-                document.getElementById('importClientsBtn').classList.remove('btn-load-pending');
-                document.getElementById('importClientsBtn').classList.add('bg-amber-500', 'hover:bg-amber-600');	
-                document.getElementById('client-upload-icon').classList.remove('fa-file-alt');
-                document.getElementById('client-upload-icon').classList.add('fa-upload');
+                document.getElementById('loadClientsBtnModal').disabled = true;
+                document.getElementById('client-structure-status-modal').classList.add('hidden');
+                document.getElementById('client-selected-file-modal').textContent = 'Ninguno';
+                document.getElementById('importClientsBtnModal').classList.remove('btn-load-pending');
+                document.getElementById('importClientsBtnModal').classList.add('bg-amber-500', 'hover:bg-amber-600');
+                document.getElementById('client-upload-icon-modal').classList.remove('fa-file-alt');
+                document.getElementById('client-upload-icon-modal').classList.add('fa-upload');
             } else if (dataType === 'services') {
                 document.getElementById('loadServicesBtnModal').disabled = true;
                 document.getElementById('service-structure-status-modal').classList.add('hidden');
@@ -3023,8 +2928,10 @@
                 setHistoryFilter('all');
                 setDashboardFilter('all'); // Inicializar el filtro de dashboard
             }
-            document.getElementById('loadClientsBtn').disabled = true;
-            document.getElementById('loadServicesBtnModal').disabled = true;
+            const clientLoadBtnModal = document.getElementById('loadClientsBtnModal');
+            if (clientLoadBtnModal) clientLoadBtnModal.disabled = true;
+            const serviceLoadBtnModal = document.getElementById('loadServicesBtnModal');
+            if (serviceLoadBtnModal) serviceLoadBtnModal.disabled = true;
 
             document.getElementById('payment1Pct').oninput = validatePaymentSum;
             document.getElementById('payment2Pct').oninput = validatePaymentSum;

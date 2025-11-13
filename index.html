@@ -213,7 +213,32 @@
         }
 
         #quote-drawer {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            bottom: auto;
+            left: auto;
+            transform: translateY(-50%);
+            z-index: 40;
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 0;
             transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .drawer-toggle {
+            border-radius: 1.5rem 0 0 1.5rem;
+        }
+
+        #quote-drawer .drawer-toggle,
+        #quote-drawer .quote-drawer-panel {
+            pointer-events: auto;
+        }
+
+        .drawer-print-btn {
+            white-space: nowrap;
         }
 
         .quote-drawer-panel {
@@ -239,20 +264,35 @@
             box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.35);
         }
 
-        #quote-drawer.drawer-open #toggleQuoteDrawer {
+        #quote-drawer.drawer-open .drawer-toggle {
             box-shadow: 0 10px 25px -10px rgba(79, 70, 229, 0.4);
         }
 
         @media (max-width: 768px) {
             #quote-drawer {
-                right: 1rem;
-                left: auto;
-                bottom: 1.5rem;
+                right: 0;
+                left: 0;
                 top: auto;
+                bottom: 0;
+                transform: translateY(0);
+                padding: 0 1rem 1.25rem;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.75rem;
+            }
+
+            .drawer-toggle {
+                border-radius: 9999px;
+                width: min(320px, 90vw);
+            }
+
+            .drawer-print-btn {
+                width: 100%;
+                justify-content: center;
             }
 
             .quote-drawer-panel {
-                width: min(94vw, 100%);
+                width: min(96vw, 540px);
                 max-height: 70vh;
                 border-radius: 1.25rem;
             }
@@ -782,16 +822,22 @@
     </div>
 
     <!-- Panel flotante para impresión de cotizaciones -->
-    <div id="quote-drawer" class="fixed right-0 bottom-6 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 z-40 flex flex-col-reverse items-end gap-3 sm:flex-row-reverse sm:items-center">
+    <div id="quote-drawer" class="fixed z-40">
         <div id="quoteDrawerPanel" aria-hidden="true" class="quote-drawer-panel bg-white dark:bg-gray-800 shadow-2xl transform translate-x-full transition-transform duration-300 border border-indigo-100/60 dark:border-indigo-500/20 flex flex-col">
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-600 dark:text-indigo-400">Cotizaciones</p>
                     <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Área de impresión</h3>
                 </div>
-                <button id="closeQuoteDrawer" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 transition" aria-label="Cerrar área de cotizaciones">
-                    <i class="fas fa-times text-lg"></i>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button id="printQuoteBtn" type="button" class="drawer-print-btn inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed" title="Imprimir cotización como PDF">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Imprimir PDF</span>
+                    </button>
+                    <button id="closeQuoteDrawer" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 transition" aria-label="Cerrar área de cotizaciones">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
             </div>
             <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/70">
                 <div id="print-area" class="p-6 bg-white dark:bg-gray-800">
@@ -802,7 +848,7 @@
                 </div>
             </div>
         </div>
-        <button id="toggleQuoteDrawer" aria-expanded="false" aria-controls="quoteDrawerPanel" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-5 rounded-l-2xl sm:rounded-l-3xl shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition flex flex-col items-center justify-center gap-2">
+        <button id="toggleQuoteDrawer" aria-expanded="false" aria-controls="quoteDrawerPanel" class="drawer-toggle bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-5 shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition flex flex-col items-center justify-center gap-2">
             <i id="quoteDrawerToggleIcon" class="fas fa-chevron-left text-lg"></i>
             <span class="uppercase text-xs tracking-widest font-semibold">Cotización</span>
         </button>
@@ -837,7 +883,19 @@
         const toggleQuoteDrawerBtn = document.getElementById('toggleQuoteDrawer');
         const quoteDrawerToggleIcon = document.getElementById('quoteDrawerToggleIcon');
         const closeQuoteDrawerBtn = document.getElementById('closeQuoteDrawer');
+        const printQuoteBtn = document.getElementById('printQuoteBtn');
         let isQuoteDrawerOpen = false;
+        let lastPrintableQuoteData = null;
+
+        function updatePrintButtonState(hasQuote) {
+            if (!printQuoteBtn) return;
+            printQuoteBtn.disabled = !hasQuote;
+        }
+
+        function setLastPrintableQuote(quoteData) {
+            lastPrintableQuoteData = JSON.parse(JSON.stringify(quoteData));
+            updatePrintButtonState(true);
+        }
 
         function openQuoteDrawer() {
             if (!quoteDrawerPanel) return;
@@ -873,6 +931,21 @@
                 quoteDrawerToggleIcon.classList.remove('fa-chevron-right');
             }
             isQuoteDrawerOpen = false;
+        }
+
+        updatePrintButtonState(false);
+
+        if (printQuoteBtn) {
+            printQuoteBtn.addEventListener('click', () => {
+                if (!lastPrintableQuoteData) {
+                    showTemporaryMessage('No hay ninguna cotización disponible para imprimir.', 'warning');
+                    return;
+                }
+                const printContent = buildPrintableHtml(lastPrintableQuoteData);
+                document.getElementById('print-area').innerHTML = printContent;
+                openQuoteDrawer();
+                window.print();
+            });
         }
 
         function toggleQuoteDrawer() {
@@ -2335,12 +2408,12 @@
             // Imprimir
             const printContent = buildPrintableHtml(quoteData);
             document.getElementById('print-area').innerHTML = printContent;
+            setLastPrintableQuote(quoteData);
             openQuoteDrawer();
-            window.print();
 
             renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
             renderDashboard();
-            showTemporaryMessage(`Cotización ${quoteData.number} guardada e impresa.`, 'success');
+            showTemporaryMessage(`Cotización ${quoteData.number} guardada. Usa "Imprimir PDF" para obtenerla.`, 'success');
         }
 
         function reprintQuote(quoteId) {
@@ -2351,9 +2424,9 @@
             }
             const printContent = buildPrintableHtml(quoteData);
             document.getElementById('print-area').innerHTML = printContent;
+            setLastPrintableQuote(quoteData);
             openQuoteDrawer();
-            window.print();
-            showTemporaryMessage(`Reimprimiendo Cotización ${quoteData.number}.`, 'info');
+            showTemporaryMessage(`Cotización ${quoteData.number} lista para imprimir desde el panel flotante.`, 'info');
         }
 
         function buildPrintableHtml(quoteData) {

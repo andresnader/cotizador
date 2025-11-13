@@ -152,11 +152,18 @@
             background-color: #fff;
             border-radius: 0.75rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, box-shadow 0.3s, transform 0.3s;
         }
         .dark .client-card-detailed {
             background-color: #374151; /* gray-700 */
             border-color: #4b5563;
+        }
+        .client-card-detailed.selected {
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.25), 0 4px 6px -4px rgba(79, 70, 229, 0.2);
+            transform: translateY(-2px);
+        }
+        .dark .client-card-detailed.selected {
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.35), 0 4px 6px -4px rgba(129, 140, 248, 0.25);
         }
         
         /* Estilos de tablas */
@@ -203,6 +210,92 @@
             background-color: #f59e0b;
             color: white;
             font-weight: 600;
+        }
+
+        #quote-drawer {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            bottom: auto;
+            left: auto;
+            transform: translateY(-50%);
+            z-index: 40;
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 0;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .drawer-toggle {
+            border-radius: 1.5rem 0 0 1.5rem;
+        }
+
+        #quote-drawer .drawer-toggle,
+        #quote-drawer .quote-drawer-panel {
+            pointer-events: auto;
+        }
+
+        .drawer-print-btn {
+            white-space: nowrap;
+        }
+
+        .quote-drawer-panel {
+            width: min(80vw, 880px);
+            max-height: 90vh;
+            border-radius: 1.5rem 0 0 1.5rem;
+        }
+
+        .quote-drawer-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .quote-drawer-panel::-webkit-scrollbar-thumb {
+            background-color: rgba(79, 70, 229, 0.35);
+            border-radius: 9999px;
+        }
+
+        .dark .quote-drawer-panel::-webkit-scrollbar-thumb {
+            background-color: rgba(129, 140, 248, 0.45);
+        }
+
+        #quote-drawer.drawer-open .quote-drawer-panel {
+            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.35);
+        }
+
+        #quote-drawer.drawer-open .drawer-toggle {
+            box-shadow: 0 10px 25px -10px rgba(79, 70, 229, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            #quote-drawer {
+                right: 0;
+                left: 0;
+                top: auto;
+                bottom: 0;
+                transform: translateY(0);
+                padding: 0 1rem 1.25rem;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.75rem;
+            }
+
+            .drawer-toggle {
+                border-radius: 9999px;
+                width: min(320px, 90vw);
+            }
+
+            .drawer-print-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .quote-drawer-panel {
+                width: min(96vw, 540px);
+                max-height: 70vh;
+                border-radius: 1.25rem;
+            }
         }
 
         @media print {
@@ -336,114 +429,6 @@
         </div>
     </div>
 
-    <div id="contractConfigModal" class="quick-modal-overlay hidden">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto dark:bg-gray-700 dark:text-white">
-            <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-600">
-                <h3 class="text-xl font-bold text-gray-800 dark:text-white"><i class="fas fa-file-contract mr-2"></i> Configuración de Contrato</h3>
-                <button onclick="closeModal('contractConfigModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><i class="fas fa-times"></i></button>
-            </div>
-            <form id="contractConfigForm" class="space-y-4">
-                <input type="hidden" id="contractQuoteId">
-                <h4 class="font-bold text-lg text-indigo-700 border-b pb-1 dark:text-indigo-400 dark:border-gray-600">I. Plazos de Ejecución</h4>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Plazo Desarrollo Web (Días/Semanas)</label>
-                        <div class="flex mt-1">
-                            <input type="number" id="devTerm" required class="w-2/3 p-2 border border-gray-300 rounded-l-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" min="1" value="30">
-                            <select id="devTimeUnit" required class="w-1/3 p-2 border border-gray-300 rounded-r-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white">
-                                <option value="días">Días</option>
-                                <option value="semanas">Semanas</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Duración Mantenimiento Web (Meses/Años)</label>
-                        <div class="flex mt-1">
-                            <input type="number" id="maintTerm" required class="w-2/3 p-2 border border-gray-300 rounded-l-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" min="1" value="12">
-                            <select id="maintTimeUnit" required class="w-1/3 p-2 border border-gray-300 rounded-r-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white">
-                                <option value="meses">Meses</option>
-                                <option value="años">Años</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Días de Notificación de No Renovación</label>
-                    <input type="number" id="noticeDays" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" min="1" value="30">
-                </div>
-
-                <h4 class="font-bold text-lg text-indigo-700 border-b pb-1 pt-4 dark:text-indigo-400 dark:border-gray-600">II. Responsables y Firmas</h4>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Representante de EL PRESTADOR (Tu Agencia)</label>
-                    <input type="text" id="prestadorRepName" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" placeholder="Ej: Andrés Nader">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cargo del Representante de EL PRESTADOR</label>
-                    <input type="text" id="prestadorRepTitle" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" placeholder="Ej: Gerente General / Director Multimedia">
-                </div>
-                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cargo del Contacto de EL CLIENTE (Firma)</label>
-                    <input type="text" id="clientContactTitle" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" placeholder="Ej: Director de Marketing / Gerente Administrativo">
-                </div>
-
-                <h4 class="font-bold text-lg text-indigo-700 border-b pb-1 pt-4 dark:text-indigo-400 dark:border-gray-600">III. Estructura de Pagos (Suma Total debe ser 100%)</h4>
-                <div class="bg-red-50 p-3 rounded-lg text-sm text-red-700 mb-4 dark:bg-red-900/50 dark:text-red-300" id="paymentSumError" style="display: none;">
-                    La suma de los porcentajes de pago por desarrollo debe ser 100%.
-                </div>
-                <div id="payment-schedule-container" class="space-y-3 border p-3 rounded-lg dark:border-gray-600">
-                    <!-- Hito 1: Primer Pago (OBLIGATORIO) -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">1. Pago Inicial (al inicio del proyecto)</label>
-                        <div class="flex space-x-2 mt-1">
-                            <input type="number" id="payment1Pct" required class="w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm text-right dark:bg-gray-600 dark:border-gray-500 dark:text-white" min="0" max="100" value="50" oninput="validatePaymentSum()">
-                            <span class="p-2 bg-gray-100 rounded-lg dark:bg-gray-600 dark:text-gray-300">%</span>
-                            <input type="text" id="payment1Hito" required class="w-2/3 p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" value="Diseño y Planificación Aprobada">
-                        </div>
-                    </div>
-                    <!-- Hito 2: Hito Intermedio (OPCIONAL) -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">2. Pago Intermedio (Hito específico, 0% para omitir)</label>
-                           <div class="flex space-x-2 mt-1">
-                            <input type="number" id="payment2Pct" required class="w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm text-right dark:bg-gray-600 dark:border-gray-500 dark:text-white" min="0" max="100" value="0" oninput="validatePaymentSum()">
-                            <span class="p-2 bg-gray-100 rounded-lg dark:bg-gray-600 dark:text-gray-300">%</span>
-                            <input type="text" id="payment2Hito" required class="w-2/3 p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" value="Entrega de Desarrollo Frontend">
-                        </div>
-                    </div>
-                    <!-- Hito 3: Pago Final (OBLIGATORIO) -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">3. Pago Final (a la finalización)</label>
-                           <div class="flex space-x-2 mt-1">
-                            <input type="number" id="payment3Pct" required class="w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm text-right dark:bg-gray-600 dark:border-gray-500 dark:text-white" min="0" max="100" value="50" oninput="validatePaymentSum()">
-                            <span class="p-2 bg-gray-100 rounded-lg dark:bg-gray-600 dark:text-gray-300">%</span>
-                            <input type="text" id="payment3Hito" required class="w-2/3 p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" value="Aprobación Final y Puesta en Producción">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between pt-2 text-sm font-bold border-t dark:border-gray-600">
-                        <span>Suma Total de Porcentajes:</span>
-                        <span id="paymentSumTotal">100%</span>
-                    </div>
-
-                    <!-- Frecuencia de Mantenimiento -->
-                    <div class="pt-4 border-t dark:border-gray-600">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Frecuencia de Pagos por Mantenimiento Web</label>
-                        <select id="maintPaymentFreq" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white">
-                            <option value="mensual">mensual</option>
-                            <option value="trimestral">trimestral</option>
-                            <option value="anual">anual</option>
-                        </select>
-                    </div>
-
-                </div>
-
-                <button type="submit" id="generateContractBtn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition shadow-md font-semibold mt-6"><i class="fas fa-file-pdf mr-2"></i> Generar Contrato PDF</button>
-            </form>
-        </div>
-    </div>
-
     <div id="clientImportModal" class="quick-modal-overlay hidden">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto dark:bg-gray-700 dark:text-white">
             <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-600">
@@ -533,7 +518,6 @@
                 <button class="tab-button active text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'cotizador')"><i class="fas fa-file-invoice-dollar mr-2"></i>Cotizador</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'dashboard')"><i class="fas fa-chart-line mr-2"></i>Dashboard</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'historial')"><i class="fas fa-history mr-2"></i>Historial</button>
-                <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'contratos')"><i class="fas fa-file-signature mr-2"></i>Contratos</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'clientes')"><i class="fas fa-users mr-2"></i>Clientes</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'servicios')"><i class="fas fa-concierge-bell mr-2"></i>Servicios</button>
                 <button class="tab-button text-sm md:text-base py-2 px-3 md:px-4 rounded-t-lg border-b-2" onclick="changeTab(event, 'configuracion')"><i class="fas fa-cog mr-2"></i>Configuración</button>
@@ -645,11 +629,24 @@
             <!-- Pestaña: Historial (ACTUALIZADA con Buscador General) -->
             <div id="historial" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg dark:bg-gray-700">
-                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 border-b pb-4 border-gray-200 dark:border-gray-600">
-                        <h2 class="text-2xl font-bold dark:text-white">Historial de Cotizaciones <span id="historyClientFilter" class="text-base font-normal text-indigo-500 dark:text-indigo-300"></span></h2>
-                         <!-- NUEVO BUSCADOR -->
-                         <input type="text" id="historySearchInput" oninput="renderQuotesHistory(historyClientFilterId, currentHistoryFilter)" placeholder="Buscar por N°, Cliente o Servicio..." class="w-full sm:w-1/3 p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-4 sm:mt-0 dark:bg-gray-600 dark:border-gray-500 dark:text-white">
-                         <!-- FIN NUEVO BUSCADOR -->
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-4 border-b pb-4 border-gray-200 dark:border-gray-600">
+                        <div class="flex-1">
+                            <h2 class="text-2xl font-bold dark:text-white">Historial de Cotizaciones <span id="historyClientFilter" class="text-base font-normal text-indigo-500 dark:text-indigo-300"></span></h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Consulta, filtra y depura cotizaciones registradas.</p>
+                        </div>
+                        <div class="w-full lg:w-auto flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                            <div class="relative flex-1 sm:w-64">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-300"></i>
+                                <input type="text" id="historySearchInput" oninput="renderQuotesHistory(historyClientFilterId, currentHistoryFilter)" placeholder="Buscar por N°, cliente o servicio..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white">
+                            </div>
+                            <label class="flex items-center gap-2 px-3 py-2 bg-gray-100 text-sm text-gray-600 rounded-lg dark:bg-gray-600 dark:text-gray-200">
+                                <input type="checkbox" id="selectAllQuotes" class="accent-indigo-600" onchange="toggleSelectAll('quotes', this.checked)">
+                                Seleccionar todo
+                            </label>
+                            <button id="bulkDeleteQuotesBtn" onclick="bulkDeleteQuotes()" class="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fas fa-trash"></i><span class="label">Eliminar Seleccionados</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="flex space-x-3 mb-6 no-print">
                         <button onclick="setHistoryFilter('all')" id="filter-all" class="px-3 py-1 text-sm rounded-lg bg-indigo-600 text-white transition duration-200">Todo</button>
@@ -658,55 +655,49 @@
                         <button onclick="setHistoryFilter('lastyear')" id="filter-lastyear" class="px-3 py-1 text-sm rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition duration-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Último Año</button>
                     </div>
 
-                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600"><thead class="bg-gray-50 dark:bg-gray-600"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Nº Cotización</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Cliente</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Fecha</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Total</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Estado</th><th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Acciones</th></tr></thead><tbody id="quotesHistoryList" class="bg-white divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600 dark:text-gray-200"></tbody></table></div>
-                </div>
-            </div>
-
-            <!-- Pestaña: Contratos (ACTUALIZADA con Visualizador) -->
-            <div id="contratos" class="tab-content">
-                <div class="bg-white p-6 rounded-xl shadow-lg dark:bg-gray-700">
-                    <h2 class="text-2xl font-bold mb-4 dark:text-white">Gestión de Contratos <span id="contractClientFilter" class="text-base font-normal text-indigo-500 dark:text-indigo-300"></span></h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="md:col-span-1 border-r pr-6 border-gray-200 dark:border-gray-600">
-                            <label for="contract-client-select" class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">1. Seleccione un Cliente</label>
-                            <select id="contract-client-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white"></select>
-                            
-                            <label for="contract-quote-select" class="block text-sm font-medium text-gray-700 mt-4 mb-1 dark:text-gray-300">2. Seleccione Cotización Aceptada</label>
-                            <select id="contract-quote-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" onchange="checkContractQuote()"></select>
-                            
-                            <!-- NUEVO BOTÓN PARA EDITAR / GUARDAR -->
-                            <button id="edit-contract-btn" onclick="toggleContractEditMode()" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-md font-semibold mt-4 hidden">
-                                <i class="fas fa-edit mr-2"></i> Editar Contrato
-                            </button>
-                        </div>
-                        <div class="md:col-span-2">
-                             <div id="contract-viewer">
-                                <h3 class="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-400">Visualizador del Contrato <span id="current-contract-number" class="text-base font-normal text-gray-500 dark:text-gray-400"></span></h3>
-                                <div id="contract-display-content" class="min-h-[300px] p-4 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap text-sm dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200">
-                                    Seleccione una cotización aceptada para cargar el contrato o empezar a redactar uno.
-                                </div>
-                                
-                                <!-- Formulario de Edición Oculto por defecto -->
-                                <div id="contract-editor-area" class="mt-4 hidden">
-                                    <label for="contract-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300">3. Redacte o pegue el contrato</label>
-                                    <textarea id="contract-text" rows="10" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm dark:bg-gray-600 dark:border-gray-500 dark:text-white" placeholder="Contenido del contrato..."></textarea>
-                                    <div class="flex space-x-4 mt-4">
-                                         <button id="save-contract-btn" onclick="saveContract()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition" disabled>Guardar Contrato</button>
-                                         <button id="prepare-contract-btn" onclick="prepareContractGeneration()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition" disabled><i class="fas fa-file-pdf mr-2"></i> Generar Contrato PDF</button>
-                                    </div>
-                                </div>
-                             </div>
-                        </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                            <thead class="bg-gray-50 dark:bg-gray-600">
+                                <tr>
+                                    <th class="px-4 py-3 text-center w-12">
+                                        <span class="sr-only">Seleccionar</span>
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Nº Cotización</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Cliente</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Fecha</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Total</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Estado</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="quotesHistoryList" class="bg-white divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600 dark:text-gray-200"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Pestaña: Clientes -->
             <div id="clientes" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg dark:bg-gray-700">
-                    <div class="flex justify-between items-center mb-6 border-b pb-4 border-gray-200 dark:border-gray-600">
-                        <h2 class="text-2xl font-bold dark:text-white">Lista de Clientes</h2>
-                        <div class="flex space-x-3">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 border-b pb-4 border-gray-200 dark:border-gray-600">
+                        <div class="w-full lg:w-2/3 flex flex-col sm:flex-row sm:items-center sm:gap-4">
+                            <div>
+                                <h2 class="text-2xl font-bold dark:text-white">Lista de Clientes</h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Gestiona tus clientes y sus cotizaciones asociadas.</p>
+                            </div>
+                            <div class="relative flex-1 mt-3 sm:mt-0">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-300"></i>
+                                <input id="clientSearchInput" type="text" placeholder="Buscar cliente por nombre, código o contacto..." oninput="handleClientSearch(this.value)" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white">
+                            </div>
+                        </div>
+                        <div class="w-full lg:w-auto flex flex-wrap gap-2 justify-end items-center">
+                            <label class="flex items-center gap-2 px-3 py-2 bg-gray-100 text-sm text-gray-600 rounded-lg dark:bg-gray-600 dark:text-gray-200">
+                                <input type="checkbox" id="selectAllClients" class="accent-indigo-600" onchange="toggleSelectAll('clients', this.checked)">
+                                Seleccionar todo
+                            </label>
+                            <button id="bulkDeleteClientsBtn" onclick="bulkDeleteClients()" class="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fas fa-trash"></i><span class="label">Eliminar Seleccionados</span>
+                            </button>
                             <button onclick="changeClientView('compact')" id="clientViewCompactBtn" class="p-2 text-gray-600 hover:text-indigo-600 rounded-lg bg-gray-100 active dark:bg-gray-600 dark:text-gray-300"><i class="fas fa-th-list"></i></button>
                             <button onclick="changeClientView('detailed')" id="clientViewDetailedBtn" class="p-2 text-gray-400 hover:text-indigo-600 rounded-lg dark:hover:text-indigo-400"><i class="fas fa-grip-horizontal"></i></button>
                             <button onclick="showQuickModal('clientImportModal')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition shadow-md font-semibold"><i class="fas fa-file-csv mr-2"></i>Importar CSV</button>
@@ -724,13 +715,29 @@
             <!-- Pestaña: Servicios -->
             <div id="servicios" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg dark:bg-gray-700">
-                    <div class="flex justify-between items-center mb-6 border-b pb-4 border-gray-200 dark:border-gray-600">
-                        <h2 class="text-2xl font-bold dark:text-white">Lista de Servicios</h2>
-                        <div class="flex space-x-3">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 border-b pb-4 border-gray-200 dark:border-gray-600">
+                        <div class="w-full lg:w-2/3 flex flex-col sm:flex-row sm:items-center sm:gap-4">
+                            <div>
+                                <h2 class="text-2xl font-bold dark:text-white">Lista de Servicios</h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Controla tus servicios y precios actualizados.</p>
+                            </div>
+                            <div class="relative flex-1 mt-3 sm:mt-0">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-300"></i>
+                                <input id="serviceSearchInput" type="text" placeholder="Buscar servicio por nombre, código o categoría..." oninput="handleServiceSearch(this.value)" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white">
+                            </div>
+                        </div>
+                        <div class="w-full lg:w-auto flex flex-wrap gap-2 justify-end items-center">
+                            <label class="flex items-center gap-2 px-3 py-2 bg-gray-100 text-sm text-gray-600 rounded-lg dark:bg-gray-600 dark:text-gray-200">
+                                <input type="checkbox" id="selectAllServices" class="accent-indigo-600" onchange="toggleSelectAll('services', this.checked)">
+                                Seleccionar todo
+                            </label>
+                            <button id="bulkDeleteServicesBtn" onclick="bulkDeleteServices()" class="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fas fa-trash"></i><span class="label">Eliminar Seleccionados</span>
+                            </button>
                             <button onclick="changeServiceView('compact')" id="serviceViewCompactBtn" class="p-2 text-gray-600 hover:text-indigo-600 rounded-lg bg-gray-100 active dark:bg-gray-600 dark:text-gray-300"><i class="fas fa-th-list"></i></button>
                             <button onclick="changeServiceView('detailed')" id="serviceViewDetailedBtn" class="p-2 text-gray-400 hover:text-indigo-600 rounded-lg dark:hover:text-indigo-400"><i class="fas fa-grip-horizontal"></i></button>
                             <button onclick="showQuickModal('serviceImportModal')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition shadow-md font-semibold"><i class="fas fa-file-csv mr-2"></i>Importar CSV</button>
-                            <button onclick="showServiceModal('create')" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md font-semibold"><i class="fas fa-plus mr-2"></i>Agregar Servicio</button>
+                            <button onclick="showServiceModal('create')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md font-semibold"><i class="fas fa-plus mr-2"></i>Agregar Servicio</button>
                         </div>
                     </div>
                     
@@ -814,8 +821,38 @@
         </main>
     </div>
 
-    <!-- Área de Impresión (oculta por defecto) -->
-    <div id="print-area" class="p-10 bg-white dark:bg-gray-700"></div>
+    <!-- Panel flotante para impresión de cotizaciones -->
+    <div id="quote-drawer" class="fixed z-40">
+        <div id="quoteDrawerPanel" aria-hidden="true" class="quote-drawer-panel bg-white dark:bg-gray-800 shadow-2xl transform translate-x-full transition-transform duration-300 border border-indigo-100/60 dark:border-indigo-500/20 flex flex-col">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-600 dark:text-indigo-400">Cotizaciones</p>
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Área de impresión</h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="printQuoteBtn" type="button" class="drawer-print-btn inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed" title="Imprimir cotización como PDF">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Imprimir PDF</span>
+                    </button>
+                    <button id="closeQuoteDrawer" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 transition" aria-label="Cerrar área de cotizaciones">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/70">
+                <div id="print-area" class="p-6 bg-white dark:bg-gray-800">
+                    <div class="text-sm text-gray-500 dark:text-gray-300">
+                        <p class="font-medium">Genera una cotización para visualizarla aquí.</p>
+                        <p class="mt-2 text-xs text-gray-400 dark:text-gray-400 leading-relaxed">Las cotizaciones se mostrarán en este panel sin afectar el diseño principal y podrás imprimirlas cuando lo necesites.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button id="toggleQuoteDrawer" aria-expanded="false" aria-controls="quoteDrawerPanel" class="drawer-toggle bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-5 shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition flex flex-col items-center justify-center gap-2">
+            <i id="quoteDrawerToggleIcon" class="fas fa-chevron-left text-lg"></i>
+            <span class="uppercase text-xs tracking-widest font-semibold">Cotización</span>
+        </button>
+    </div>
 
 
     <script>
@@ -838,11 +875,101 @@
                     serviceLoadBtnModal.disabled = !serviceLoadBtnModal.classList.contains('bg-green-600');
                 }
             }
-            if (modalId === 'contractConfigModal') {
-                document.getElementById('paymentSumError').style.display = 'none';
+        }
+
+        // --- PANEL FLOTANTE DE COTIZACIONES ---
+        const quoteDrawerPanel = document.getElementById('quoteDrawerPanel');
+        const quoteDrawerContainer = document.getElementById('quote-drawer');
+        const toggleQuoteDrawerBtn = document.getElementById('toggleQuoteDrawer');
+        const quoteDrawerToggleIcon = document.getElementById('quoteDrawerToggleIcon');
+        const closeQuoteDrawerBtn = document.getElementById('closeQuoteDrawer');
+        const printQuoteBtn = document.getElementById('printQuoteBtn');
+        let isQuoteDrawerOpen = false;
+        let lastPrintableQuoteData = null;
+
+        function updatePrintButtonState(hasQuote) {
+            if (!printQuoteBtn) return;
+            printQuoteBtn.disabled = !hasQuote;
+        }
+
+        function setLastPrintableQuote(quoteData) {
+            lastPrintableQuoteData = JSON.parse(JSON.stringify(quoteData));
+            updatePrintButtonState(true);
+        }
+
+        function openQuoteDrawer() {
+            if (!quoteDrawerPanel) return;
+            quoteDrawerPanel.classList.remove('translate-x-full');
+            quoteDrawerPanel.classList.add('translate-x-0');
+            quoteDrawerPanel.setAttribute('aria-hidden', 'false');
+            if (quoteDrawerContainer) quoteDrawerContainer.classList.add('drawer-open');
+            if (toggleQuoteDrawerBtn) {
+                toggleQuoteDrawerBtn.setAttribute('aria-expanded', 'true');
+                toggleQuoteDrawerBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                toggleQuoteDrawerBtn.classList.add('bg-indigo-700', 'hover:bg-indigo-800');
+            }
+            if (quoteDrawerToggleIcon) {
+                quoteDrawerToggleIcon.classList.remove('fa-chevron-left');
+                quoteDrawerToggleIcon.classList.add('fa-chevron-right');
+            }
+            isQuoteDrawerOpen = true;
+        }
+
+        function closeQuoteDrawer() {
+            if (!quoteDrawerPanel) return;
+            quoteDrawerPanel.classList.add('translate-x-full');
+            quoteDrawerPanel.classList.remove('translate-x-0');
+            quoteDrawerPanel.setAttribute('aria-hidden', 'true');
+            if (quoteDrawerContainer) quoteDrawerContainer.classList.remove('drawer-open');
+            if (toggleQuoteDrawerBtn) {
+                toggleQuoteDrawerBtn.setAttribute('aria-expanded', 'false');
+                toggleQuoteDrawerBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                toggleQuoteDrawerBtn.classList.remove('bg-indigo-700', 'hover:bg-indigo-800');
+            }
+            if (quoteDrawerToggleIcon) {
+                quoteDrawerToggleIcon.classList.add('fa-chevron-left');
+                quoteDrawerToggleIcon.classList.remove('fa-chevron-right');
+            }
+            isQuoteDrawerOpen = false;
+        }
+
+        updatePrintButtonState(false);
+
+        if (printQuoteBtn) {
+            printQuoteBtn.addEventListener('click', () => {
+                if (!lastPrintableQuoteData) {
+                    showTemporaryMessage('No hay ninguna cotización disponible para imprimir.', 'warning');
+                    return;
+                }
+                const printContent = buildPrintableHtml(lastPrintableQuoteData);
+                document.getElementById('print-area').innerHTML = printContent;
+                openQuoteDrawer();
+                window.print();
+            });
+        }
+
+        function toggleQuoteDrawer() {
+            if (isQuoteDrawerOpen) {
+                closeQuoteDrawer();
+            } else {
+                openQuoteDrawer();
             }
         }
-        
+
+        if (toggleQuoteDrawerBtn) {
+            toggleQuoteDrawerBtn.addEventListener('click', toggleQuoteDrawer);
+        }
+
+        if (closeQuoteDrawerBtn) {
+            closeQuoteDrawerBtn.addEventListener('click', closeQuoteDrawer);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && isQuoteDrawerOpen) {
+                closeQuoteDrawer();
+            }
+        });
+
         // --- LÓGICA DE ACCESO ---
         const loginOverlay = document.getElementById('login-overlay');
         const appContainer = document.getElementById('app-container');
@@ -887,7 +1014,6 @@
         let clients = JSON.parse(localStorage.getItem('clients')) || [];
         let services = JSON.parse(localStorage.getItem('services')) || [];
         let quotesHistory = JSON.parse(localStorage.getItem('quotesHistory')) || [];
-        let contracts = JSON.parse(localStorage.getItem('contracts')) || [];
         let quoteItemsData = [];
         let quoteCounter = parseInt(localStorage.getItem('quoteCounter')) || 1;
         let companySettings = JSON.parse(localStorage.getItem('companySettings')) || {
@@ -912,19 +1038,25 @@
         let currentClientView = 'compact';
         let currentServiceView = 'compact';
         let historyClientFilterId = null;
-        let contractClientFilterId = null;
-        let currentHistoryFilter = 'all'; 
+        let currentHistoryFilter = 'all';
         let currentDashboardFilter = 'all'; // NUEVO
 
         let tsQuoteClient = null;
         let tsServiceSelect = null;
-        let isContractEditing = false; // Estado del visualizador de contratos
+        let clientSearchTerm = '';
+        let serviceSearchTerm = '';
+        let visibleClientIds = [];
+        let visibleServiceIds = [];
+        let visibleQuoteIds = [];
+        const selectedClients = new Set();
+        const selectedServices = new Set();
+        const selectedQuotes = new Set();
         
         // --- LÓGICA DE PESTAÑAS ---
         function changeTab(event, tabName, clientFilterId = null) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            
+
             const targetTab = document.getElementById(tabName);
             targetTab.classList.add('active');
             
@@ -936,13 +1068,9 @@
             }
             
             if (tabName === 'dashboard') setDashboardFilter(currentDashboardFilter); // Usar setDashboardFilter para renderizar
-            if (tabName === 'contratos') {
-                contractClientFilterId = clientFilterId;
-                renderContractsPage(contractClientFilterId);
-            }
             if (tabName === 'historial') {
                 historyClientFilterId = clientFilterId;
-                renderQuotesHistory(historyClientFilterId, currentHistoryFilter); 
+                renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
             }
             if (tabName === 'clientes') {
                 renderClients();
@@ -955,7 +1083,179 @@
                 resetQuoteEditMode();
             }
         }
-        
+
+        function handleClientSearch(value) {
+            clientSearchTerm = value;
+            renderClients();
+        }
+
+        function handleServiceSearch(value) {
+            serviceSearchTerm = value;
+            renderServices();
+        }
+
+        function updateBulkActionState(section) {
+            const config = {
+                clients: { buttonId: 'bulkDeleteClientsBtn', count: selectedClients.size },
+                services: { buttonId: 'bulkDeleteServicesBtn', count: selectedServices.size },
+                quotes: { buttonId: 'bulkDeleteQuotesBtn', count: selectedQuotes.size }
+            };
+            const settings = config[section];
+            if (!settings) return;
+            const button = document.getElementById(settings.buttonId);
+            if (!button) return;
+            const label = button.querySelector('.label');
+            const hasSelection = settings.count > 0;
+            button.disabled = !hasSelection;
+            button.classList.toggle('opacity-50', !hasSelection);
+            button.classList.toggle('cursor-not-allowed', !hasSelection);
+            if (label) {
+                const baseText = label.getAttribute('data-base') || label.textContent;
+                if (!label.getAttribute('data-base')) {
+                    label.setAttribute('data-base', baseText);
+                }
+                label.textContent = hasSelection ? `${baseText} (${settings.count})` : baseText;
+            }
+        }
+
+        function syncSelectAllCheckbox(section) {
+            let checkboxId;
+            let visibleIds;
+            let selectedSet;
+            switch (section) {
+                case 'clients':
+                    checkboxId = 'selectAllClients';
+                    visibleIds = visibleClientIds;
+                    selectedSet = selectedClients;
+                    break;
+                case 'services':
+                    checkboxId = 'selectAllServices';
+                    visibleIds = visibleServiceIds;
+                    selectedSet = selectedServices;
+                    break;
+                case 'quotes':
+                    checkboxId = 'selectAllQuotes';
+                    visibleIds = visibleQuoteIds;
+                    selectedSet = selectedQuotes;
+                    break;
+                default:
+                    return;
+            }
+            const checkbox = document.getElementById(checkboxId);
+            if (!checkbox) return;
+            const totalVisible = visibleIds.length;
+            const selectedCount = visibleIds.filter(id => selectedSet.has(id)).length;
+            checkbox.disabled = totalVisible === 0;
+            checkbox.checked = totalVisible > 0 && selectedCount === totalVisible;
+            checkbox.indeterminate = selectedCount > 0 && selectedCount < totalVisible;
+        }
+
+        function toggleSelectAll(section, checked) {
+            let visibleIds;
+            let selectedSet;
+            switch (section) {
+                case 'clients':
+                    visibleIds = visibleClientIds;
+                    selectedSet = selectedClients;
+                    break;
+                case 'services':
+                    visibleIds = visibleServiceIds;
+                    selectedSet = selectedServices;
+                    break;
+                case 'quotes':
+                    visibleIds = visibleQuoteIds;
+                    selectedSet = selectedQuotes;
+                    break;
+                default:
+                    return;
+            }
+            visibleIds.forEach(id => {
+                if (checked) {
+                    selectedSet.add(id);
+                } else {
+                    selectedSet.delete(id);
+                }
+            });
+
+            if (section === 'clients') {
+                renderClients();
+            } else if (section === 'services') {
+                renderServices();
+            } else if (section === 'quotes') {
+                renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
+            }
+        }
+
+        function toggleClientSelection(id, checked, cardElement = null) {
+            if (checked) {
+                selectedClients.add(id);
+            } else {
+                selectedClients.delete(id);
+            }
+            if (cardElement) {
+                cardElement.classList.toggle('selected', checked);
+            }
+            updateBulkActionState('clients');
+            syncSelectAllCheckbox('clients');
+        }
+
+        function toggleServiceSelection(id, checked, cardElement = null) {
+            if (checked) {
+                selectedServices.add(id);
+            } else {
+                selectedServices.delete(id);
+            }
+            if (cardElement) {
+                cardElement.classList.toggle('selected', checked);
+            }
+            updateBulkActionState('services');
+            syncSelectAllCheckbox('services');
+        }
+
+        function toggleQuoteSelection(id, checked) {
+            if (checked) {
+                selectedQuotes.add(id);
+            } else {
+                selectedQuotes.delete(id);
+            }
+            updateBulkActionState('quotes');
+            syncSelectAllCheckbox('quotes');
+        }
+
+        function bulkDeleteClients() {
+            if (selectedClients.size === 0) return;
+            if (!confirm(`¿Eliminar ${selectedClients.size} cliente(s) seleccionados?`)) return;
+            const toRemove = new Set(selectedClients);
+            clients = clients.filter(client => !toRemove.has(client.id));
+            selectedClients.clear();
+            localStorage.setItem('clients', JSON.stringify(clients));
+            renderClients();
+            showTemporaryMessage('Clientes seleccionados eliminados correctamente.', 'success');
+        }
+
+        function bulkDeleteServices() {
+            if (selectedServices.size === 0) return;
+            if (!confirm(`¿Eliminar ${selectedServices.size} servicio(s) seleccionados?`)) return;
+            const toRemove = new Set(selectedServices);
+            services = services.filter(service => !toRemove.has(service.id));
+            selectedServices.clear();
+            localStorage.setItem('services', JSON.stringify(services));
+            renderServices();
+            showTemporaryMessage('Servicios seleccionados eliminados correctamente.', 'success');
+        }
+
+        function bulkDeleteQuotes() {
+            if (selectedQuotes.size === 0) return;
+            if (!confirm(`¿Eliminar ${selectedQuotes.size} cotización(es) del historial?`)) return;
+            const toRemove = new Set(selectedQuotes);
+            quotesHistory = quotesHistory.filter(quote => !toRemove.has(quote.id));
+            selectedQuotes.clear();
+            localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
+            renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
+            renderDashboard();
+            showTemporaryMessage('Cotizaciones seleccionadas eliminadas del historial.', 'success');
+        }
+
         // --- FUNCIÓN DE AUTOGENERACIÓN DE CÓDIGO ---
         function generateClientCode(razonSocial) {
             if (!razonSocial) return '';
@@ -1037,9 +1337,38 @@
 
         function renderClients() {
             clientViewContent.innerHTML = '';
-            
-            if (clients.length === 0) {
-                clientViewContent.innerHTML = `<p class="text-center py-8 text-gray-500 dark:text-gray-400">No hay clientes registrados.</p>`;
+
+            for (const id of Array.from(selectedClients)) {
+                if (!clients.find(c => c.id === id)) {
+                    selectedClients.delete(id);
+                }
+            }
+
+            const searchValue = clientSearchTerm.trim().toLowerCase();
+            let filteredClients = clients.slice();
+            if (searchValue) {
+                filteredClients = filteredClients.filter(client => {
+                    const fields = [client.name, client.code, client.ruc, client.contact, client.phone, client.city];
+                    return fields.some(value => (value || '').toString().toLowerCase().includes(searchValue));
+                });
+            }
+
+            visibleClientIds = filteredClients.map(client => client.id);
+
+            const searchInput = document.getElementById('clientSearchInput');
+            if (searchInput && searchInput.value !== clientSearchTerm) {
+                searchInput.value = clientSearchTerm;
+            }
+
+            updateBulkActionState('clients');
+            syncSelectAllCheckbox('clients');
+
+            if (filteredClients.length === 0) {
+                const message = clients.length === 0
+                    ? 'No hay clientes registrados.'
+                    : 'No se encontraron clientes que coincidan con el filtro.';
+                clientViewContent.innerHTML = `<p class="text-center py-8 text-gray-500 dark:text-gray-400">${message}</p>`;
+                updateClientDropdowns();
                 return;
             }
 
@@ -1049,6 +1378,7 @@
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
                             <thead class="bg-gray-50 dark:bg-gray-600">
                                 <tr>
+                                    <th class="px-4 py-3 text-center w-12"><span class="sr-only">Seleccionar</span></th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Código / RUC</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Razón Social / Contacto</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Ciudad / Teléfono</th>
@@ -1060,57 +1390,75 @@
                     </div>
                 `;
                 const clientList = document.getElementById('clientList');
-                clients.forEach(client => {
+                filteredClients.forEach(client => {
+                    const contact = client.contact || 'Sin contacto';
+                    const phone = client.phone || 'N/A';
+                    const city = client.city || 'N/A';
                     const row = document.createElement('tr');
-                    const nameRuc = `<div class="font-semibold">${client.name}</div><div class="text-xs text-gray-500 dark:text-gray-400">${client.ruc}</div>`;
-                    const cityPhone = `<div class="font-medium">${client.city || 'N/A'}</div><div class="text-xs text-gray-500 dark:text-gray-400">${client.phone || 'N/A'}</div>`;
-
                     row.innerHTML = `
-                        <td class="px-4 py-3 whitespace-nowrap font-mono text-sm">${client.code}</td>
-                        <td class="px-4 py-3 whitespace-nowrap">${nameRuc}</td>
-                        <td class="px-4 py-3 whitespace-nowrap">${cityPhone}</td>
+                        <td class="px-4 py-3 text-center">
+                            <input type="checkbox" class="h-4 w-4 accent-indigo-600" ${selectedClients.has(client.id) ? 'checked' : ''} onchange="toggleClientSelection('${client.id}', this.checked)">
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap font-mono text-sm">${client.code}<div class="text-xs text-gray-500 dark:text-gray-400">${client.ruc}</div></td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="font-semibold">${client.name}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">${contact}</div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="font-medium">${city}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">${phone}</div>
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                             <button onclick="changeTab(null, 'historial', '${client.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2" title="Ver Historial"><i class="fas fa-history"></i></button>
-                            <button onclick="changeTab(null, 'contratos', '${client.id}')" class="text-green-600 hover:text-green-900 mr-2" title="Ver Contratos"><i class="fas fa-file-signature"></i></button>
-                            <button onclick="showClientModal('edit', '${client.id}')" class="text-blue-600 hover:text-blue-900 mr-2"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteClient('${client.id}')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                            <button onclick="showClientModal('edit', '${client.id}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteClient('${client.id}')" class="text-red-600 hover:text-red-900" title="Eliminar"><i class="fas fa-trash"></i></button>
                         </td>
                     `;
                     clientList.appendChild(row);
                 });
-
             } else {
                 const cardGrid = document.createElement('div');
                 cardGrid.className = 'client-card-grid';
-                
-                clients.forEach(client => {
-                    const nameLength = client.name ? client.name.length : 0;
-                    const nameClass = nameLength > 30 ? 'text-lg' : 'text-xl';	
 
+                filteredClients.forEach(client => {
+                    const contact = client.contact || 'Sin correo electrónico';
+                    const phone = client.phone || 'Sin teléfono';
+                    const address = client.address || 'Sin dirección';
+                    const city = client.city || 'N/D';
                     const card = document.createElement('div');
                     card.className = 'client-card-detailed border border-gray-200 hover:shadow-lg transition duration-150 relative dark:border-gray-600';
                     card.innerHTML = `
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <p class="text-xs font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block dark:bg-indigo-900/50 dark:text-indigo-300">${client.code}</p>
-                                <h3 class="${nameClass} font-bold text-gray-800 mt-1 truncate dark:text-white" title="${client.name}">${client.name}</h3>
+                        <div class="flex justify-between items-start mb-4 gap-3">
+                            <div class="max-w-[70%]">
+                                <span class="text-xs font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block dark:bg-indigo-900/50 dark:text-indigo-300">${client.code}</span>
+                                <h3 class="text-lg md:text-xl font-bold text-gray-800 mt-2 dark:text-white">${client.name}</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">RUC/C.I.: ${client.ruc}</p>
                             </div>
-                            <div class="flex space-x-1">
-                                <button onclick="changeTab(null, 'historial', '${client.id}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full dark:hover:bg-gray-600" title="Ver Historial"><i class="fas fa-history"></i></button>
-                                <button onclick="changeTab(null, 'contratos', '${client.id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-full dark:hover:bg-gray-600" title="Ver Contratos"><i class="fas fa-file-signature"></i></button>
-                                <button onclick="showClientModal('edit', '${client.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full dark:hover:bg-gray-600" title="Editar"><i class="fas fa-edit"></i></button>
+                            <div class="flex items-start gap-2">
+                                <input type="checkbox" class="h-4 w-4 accent-indigo-600 mt-1" ${selectedClients.has(client.id) ? 'checked' : ''} onchange="toggleClientSelection('${client.id}', this.checked, this.closest('.client-card-detailed'))">
+                                <div class="flex flex-col space-y-1">
+                                    <button onclick="changeTab(null, 'historial', '${client.id}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full dark:hover:bg-gray-600" title="Ver Historial"><i class="fas fa-history"></i></button>
+                                    <button onclick="showClientModal('edit', '${client.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full dark:hover:bg-gray-600" title="Editar"><i class="fas fa-edit"></i></button>
+                                    <button onclick="deleteClient('${client.id}')" class="p-2 text-red-600 hover:bg-red-50 rounded-full dark:hover:bg-gray-600" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                </div>
                             </div>
                         </div>
-                        <p class="text-sm text-gray-600 mb-1 dark:text-gray-300">RUC/C.I.: <span class="font-medium">${client.ruc}</span></p>
-                        <p class="text-sm text-gray-600 mb-1 dark:text-gray-300">Email: <span class="font-medium">${client.contact || 'N/A'}</span></p>
-                        <p class="text-sm text-gray-600 mb-1 dark:text-gray-300">Teléfono: <span class="font-medium">${client.phone || 'N/A'}</span></p>
-                        <p class="text-sm text-gray-600 dark:text-gray-300">Dir: <span class="font-medium">${client.address || 'Sin dirección'} (${client.city || 'N/A'})</span></p>
+                        <div class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                            <div class="flex items-center gap-2"><i class="fas fa-envelope text-indigo-500"></i><span>${contact}</span></div>
+                            <div class="flex items-center gap-2"><i class="fas fa-phone text-indigo-500"></i><span>${phone}</span></div>
+                            <div class="flex items-start gap-2"><i class="fas fa-map-marker-alt text-indigo-500 mt-1"></i><span>${address} (${city})</span></div>
+                        </div>
                     `;
+                    if (selectedClients.has(client.id)) {
+                        card.classList.add('selected');
+                    }
                     cardGrid.appendChild(card);
                 });
                 clientViewContent.appendChild(cardGrid);
             }
+
             updateClientDropdowns();
+            syncSelectAllCheckbox('clients');
         }
 
         clientForm.addEventListener('submit', (e) => {
@@ -1154,10 +1502,13 @@
         });
 
         function deleteClient(id) {
-            if (confirm('¿Estás seguro de que quieres eliminar este cliente? Esto también afectará las cotizaciones y contratos asociados.')) {
+            const client = clients.find(c => c.id === id);
+            if (confirm('¿Estás seguro de que quieres eliminar este cliente? Esto también puede afectar las cotizaciones asociadas.')) {
                 clients = clients.filter(c => c.id !== id);
                 localStorage.setItem('clients', JSON.stringify(clients));
+                selectedClients.delete(id);
                 renderClients();
+                showTemporaryMessage(`Cliente ${client ? client.name : ''} eliminado correctamente.`, 'success');
             }
         }
         
@@ -1212,17 +1563,47 @@
         function renderServices() {
             serviceViewContent.innerHTML = '';
 
-             if (services.length === 0) {
-                serviceViewContent.innerHTML = `<p class="text-center py-8 text-gray-500 dark:text-gray-400">No hay servicios registrados.</p>`;
+            for (const id of Array.from(selectedServices)) {
+                if (!services.find(s => s.id === id)) {
+                    selectedServices.delete(id);
+                }
+            }
+
+            const searchValue = serviceSearchTerm.trim().toLowerCase();
+            let filteredServices = services.slice();
+            if (searchValue) {
+                filteredServices = filteredServices.filter(service => {
+                    const fields = [service.name, service.code, service.category, service.description];
+                    return fields.some(value => (value || '').toString().toLowerCase().includes(searchValue));
+                });
+            }
+
+            visibleServiceIds = filteredServices.map(service => service.id);
+
+            const searchInput = document.getElementById('serviceSearchInput');
+            if (searchInput && searchInput.value !== serviceSearchTerm) {
+                searchInput.value = serviceSearchTerm;
+            }
+
+            updateBulkActionState('services');
+            syncSelectAllCheckbox('services');
+
+            if (filteredServices.length === 0) {
+                const message = services.length === 0
+                    ? 'No hay servicios registrados.'
+                    : 'No se encontraron servicios que coincidan con el filtro.';
+                serviceViewContent.innerHTML = `<p class="text-center py-8 text-gray-500 dark:text-gray-400">${message}</p>`;
+                updateServiceDropdown();
                 return;
             }
-            
+
             if (currentServiceView === 'compact') {
                 serviceViewContent.innerHTML = `
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
                             <thead class="bg-gray-50 dark:bg-gray-600">
                                 <tr>
+                                    <th class="px-4 py-3 text-center w-12"><span class="sr-only">Seleccionar</span></th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Servicio / Código</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Precio / Costo</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">Categoría</th>
@@ -1234,18 +1615,24 @@
                     </div>
                 `;
                 const serviceList = document.getElementById('serviceList');
-                services.forEach(service => {
+                filteredServices.forEach(service => {
                     const row = document.createElement('tr');
-                    const serviceInfo = `<div class="font-semibold">${service.name}</div><div class="text-xs text-gray-500 dark:text-gray-400">${service.code}</div>`;
-                    const priceInfo = `<div class="font-semibold text-green-600 dark:text-green-400">$${parseFloat(service.price).toFixed(2)}</div><div class="text-xs text-gray-500 dark:text-gray-400">Costo: $${parseFloat(service.cost).toFixed(2)}</div>`;
-                    
                     row.innerHTML = `
-                        <td class="px-4 py-3 whitespace-nowrap">${serviceInfo}</td>
-                        <td class="px-4 py-3 whitespace-nowrap">${priceInfo}</td>
+                        <td class="px-4 py-3 text-center">
+                            <input type="checkbox" class="h-4 w-4 accent-indigo-600" ${selectedServices.has(service.id) ? 'checked' : ''} onchange="toggleServiceSelection('${service.id}', this.checked)">
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="font-semibold">${service.name}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">${service.code}</div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="font-semibold text-green-600 dark:text-green-400">$${parseFloat(service.price).toFixed(2)}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Costo: $${parseFloat(service.cost).toFixed(2)}</div>
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap">${service.category || 'General'}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                            <button onclick="showServiceModal('edit', '${service.id}')" class="text-blue-600 hover:text-blue-900 mr-2"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteService('${service.id}')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                            <button onclick="showServiceModal('edit', '${service.id}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteService('${service.id}')" class="text-red-600 hover:text-red-900" title="Eliminar"><i class="fas fa-trash"></i></button>
                         </td>
                     `;
                     serviceList.appendChild(row);
@@ -1254,29 +1641,40 @@
                 const cardGrid = document.createElement('div');
                 cardGrid.className = 'client-card-grid';
 
-                services.forEach(service => {
+                filteredServices.forEach(service => {
                     const card = document.createElement('div');
                     card.className = 'client-card-detailed border border-gray-200 hover:shadow-lg transition duration-150 relative dark:border-gray-600';
                     card.innerHTML = `
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <p class="text-xs font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block dark:bg-indigo-900/50 dark:text-indigo-300">${service.code} / ${service.category || 'General'}</p>
-                                <h3 class="text-xl font-bold text-gray-800 mt-1 truncate dark:text-white">${service.name}</h3>
+                        <div class="flex justify-between items-start mb-4 gap-3">
+                            <div class="max-w-[65%]">
+                                <span class="text-xs font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block dark:bg-indigo-900/50 dark:text-indigo-300">${service.category || 'General'}</span>
+                                <h3 class="text-lg md:text-xl font-bold text-gray-800 mt-2 dark:text-white">${service.name}</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">${service.code}</p>
                             </div>
-                            <div class="flex space-x-1">
-                                <button onclick="showServiceModal('edit', '${service.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full dark:hover:bg-gray-600" title="Editar"><i class="fas fa-edit"></i></button>
-                                <button onclick="deleteService('${service.id}')" class="p-2 text-red-600 hover:bg-red-50 rounded-full dark:hover:bg-gray-600" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            <div class="flex items-start gap-2">
+                                <input type="checkbox" class="h-4 w-4 accent-indigo-600 mt-1" ${selectedServices.has(service.id) ? 'checked' : ''} onchange="toggleServiceSelection('${service.id}', this.checked, this.closest('.client-card-detailed'))">
+                                <div class="flex flex-col space-y-1">
+                                    <button onclick="showServiceModal('edit', '${service.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full dark:hover:bg-gray-600" title="Editar"><i class="fas fa-edit"></i></button>
+                                    <button onclick="deleteService('${service.id}')" class="p-2 text-red-600 hover:bg-red-50 rounded-full dark:hover:bg-gray-600" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                </div>
                             </div>
                         </div>
-                        <p class="text-sm font-semibold text-gray-700 mb-2 dark:text-gray-300">Precio: <span class="text-green-600 dark:text-green-400">$${parseFloat(service.price).toFixed(2)}</span> | Costo: $${parseFloat(service.cost).toFixed(2)}</p>
-                        <p class="text-xs text-gray-500 whitespace-pre-wrap dark:text-gray-400">${service.description || 'Sin descripción detallada.'}</p>
+                        <div class="flex flex-wrap justify-between items-center text-sm text-gray-600 dark:text-gray-300 mb-3">
+                            <span class="font-semibold text-green-600 dark:text-green-400">$${parseFloat(service.price).toFixed(2)}</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Costo interno: $${parseFloat(service.cost).toFixed(2)}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap border-t pt-3 mt-3 border-gray-200 dark:border-gray-600">${service.description || 'Sin descripción detallada.'}</p>
                     `;
+                    if (selectedServices.has(service.id)) {
+                        card.classList.add('selected');
+                    }
                     cardGrid.appendChild(card);
                 });
                 serviceViewContent.appendChild(cardGrid);
             }
 
             updateServiceDropdown();
+            syncSelectAllCheckbox('services');
         }
 
         serviceForm.addEventListener('submit', (e) => {
@@ -1319,10 +1717,13 @@
         });
 
         function deleteService(id) {
+            const service = services.find(s => s.id === id);
             if (confirm('¿Estás seguro de que quieres eliminar este servicio?')) {
                 services = services.filter(s => s.id !== id);
                 localStorage.setItem('services', JSON.stringify(services));
+                selectedServices.delete(id);
                 renderServices();
+                showTemporaryMessage(`Servicio ${service ? service.name : ''} eliminado correctamente.`, 'success');
             }
         }
         
@@ -1376,26 +1777,7 @@
                 const client = clients.find(c => c.id === selectedClientId);
                 quoteRUCInput.value = client ? client.ruc : '';
                 updateQuoteNumberPreview();
-
-                const contractClientSelect = document.getElementById('contract-client-select');
-                if (contractClientSelect && selectedClientId && contractClientSelect.querySelector(`option[value="${selectedClientId}"]`)) {
-                    contractClientSelect.value = selectedClientId;
-                    contractClientSelect.dispatchEvent(new Event('change'));
-                }
             });
-
-            const contractClientSelect = document.getElementById('contract-client-select');
-            if (contractClientSelect) {
-                const currentValue = contractClientSelect.value;
-                contractClientSelect.innerHTML = '<option value="">Seleccione un cliente</option>';
-                clients.forEach(client => {
-                    const option = document.createElement('option');
-                    option.value = client.id;
-                    option.textContent = `${client.name} (${client.code})`;
-                    contractClientSelect.appendChild(option);
-                });
-                contractClientSelect.value = currentValue;
-            }
         }
         
         function updateServiceDropdown() {
@@ -1737,10 +2119,16 @@
 
         function renderQuotesHistory(filterId = null, filterTime = 'all') {
             quotesHistoryList.innerHTML = '';
-            
+
+            for (const id of Array.from(selectedQuotes)) {
+                if (!quotesHistory.find(q => q.id === id)) {
+                    selectedQuotes.delete(id);
+                }
+            }
+
             let filteredQuotes = quotesHistory;
             historyClientFilterEl.textContent = '';
-            
+
             const searchTerm = historySearchInput.value.toLowerCase().trim(); // NUEVO: Obtener término de búsqueda
 
             // 1. Filtrar por Cliente
@@ -1787,12 +2175,21 @@
             }
 
 
-            if (filteredQuotes.length === 0) {
-                quotesHistoryList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay cotizaciones en el historial ${filterId ? 'para este cliente' : ''} que coincidan con el filtro.</td></tr>`;
+            const orderedQuotes = [...filteredQuotes].reverse();
+            visibleQuoteIds = orderedQuotes.map(quote => quote.id);
+
+            updateBulkActionState('quotes');
+            syncSelectAllCheckbox('quotes');
+
+            if (orderedQuotes.length === 0) {
+                quotesHistoryList.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay cotizaciones en el historial ${filterId ? 'para este cliente' : ''} que coincidan con el filtro.</td></tr>`;
             } else {
-                [...filteredQuotes].reverse().forEach(quote => {
+                orderedQuotes.forEach(quote => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
+                        <td class="px-4 py-3 text-center">
+                            <input type="checkbox" class="h-4 w-4 accent-indigo-600" ${selectedQuotes.has(quote.id) ? 'checked' : ''} onchange="toggleQuoteSelection('${quote.id}', this.checked)">
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap font-mono text-xs">${quote.number}</td>
                         <td class="px-4 py-3 whitespace-nowrap">${quote.client.name}</td>
                         <td class="px-4 py-3 whitespace-nowrap">${quote.issueDate}</td>
@@ -1824,7 +2221,8 @@
             const quoteId = document.getElementById('quoteIdToDelete').value;
             quotesHistory = quotesHistory.filter(q => q.id !== quoteId);
             localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
-            
+            selectedQuotes.delete(quoteId);
+
             closeModal('deleteQuoteConfirmationModal');
             renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
             renderDashboard();
@@ -1838,13 +2236,6 @@
                 localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
                 renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
                 renderDashboard();
-                if (newStatus === 'Aceptada') {
-                    // Check if a contract entry already exists to avoid overwriting config
-                    if (!contracts.find(c => c.quoteId === quoteId)) {
-                         contracts.push({ quoteId, text: '', config: {} });
-                         localStorage.setItem('contracts', JSON.stringify(contracts));
-                    }
-                }
             }
         }
         
@@ -1853,11 +2244,12 @@
             if (quote) {
                 quotesHistory = quotesHistory.filter(q => q.id !== quoteId);
                 localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
+                selectedQuotes.delete(quoteId);
 
                 if (tsQuoteClient) { tsQuoteClient.setValue(quote.client.id); }
 
-                quoteItemsData = quote.items.map(item => ({	
-                    id: item.id, name: item.name, description: item.description,	
+                quoteItemsData = quote.items.map(item => ({
+                    id: item.id, name: item.name, description: item.description,
                     price: item.price, quantity: item.quantity,
                     category: item.category, cost: item.cost
                 }));
@@ -1983,327 +2375,7 @@
             svg.selectAll("mybar").data(data).enter().append("rect").attr("x", d => x(d.month)).attr("y", d => y(d.sales)).attr("width", x.bandwidth()).attr("height", d => height - y(d.sales)).attr("fill", companySettings.accentColor);
         }
         
-        // --- LÓGICA DE CONTRATOS (ACTUALIZADA con Visualizador) ---
-        const contractClientSelect = document.getElementById('contract-client-select');
-        const contractQuoteSelect = document.getElementById('contract-quote-select');
-        const contractText = document.getElementById('contract-text');
-        const prepareContractBtn = document.getElementById('prepare-contract-btn');
-
-
-        function renderContractsPage(filterId = null) {
-            updateClientDropdowns();
-            
-            contractClientFilterEl.textContent = '';
-            if (filterId) {
-                const client = clients.find(c => c.id === filterId);
-                if (client) {
-                    contractClientFilterEl.textContent = `(Filtrando por: ${client.name})`;
-                    contractClientSelect.value = filterId;
-                    contractClientSelect.dispatchEvent(new Event('change'));
-                }
-            }
-            // Asegurar el estado inicial del visualizador
-            checkContractQuote();
-        }
-
-        contractClientSelect.addEventListener('change', () => {
-            const clientId = contractClientSelect.value;
-            contractQuoteSelect.innerHTML = '<option value="">Seleccione una cotización</option>';
-            checkContractQuote(); // Resetear el visualizador
-
-            if (clientId) {
-                const clientQuotes = quotesHistory.filter(q => q.client.id === clientId && q.status === 'Aceptada');
-                clientQuotes.forEach(q => {
-                    const option = document.createElement('option');
-                    option.value = q.id;
-                    option.textContent = q.number;
-                    contractQuoteSelect.appendChild(option);
-                });
-            }
-        });
-
-        function checkContractQuote() {
-            const quoteId = contractQuoteSelect.value;
-            const contractDisplayContent = document.getElementById('contract-display-content');
-            const contractText = document.getElementById('contract-text');
-            const currentContractNumber = document.getElementById('current-contract-number');
-            const editContractBtn = document.getElementById('edit-contract-btn');
-            const contractEditorArea = document.getElementById('contract-editor-area');
-            
-            // 1. Resetear estado visual
-            contractText.value = '';
-            contractEditorArea.classList.add('hidden');
-            editContractBtn.classList.add('hidden');
-            currentContractNumber.textContent = '';
-            isContractEditing = false;
-            
-            if (!quoteId) {
-                contractDisplayContent.innerHTML = 'Seleccione una cotización aceptada para cargar el contrato o empezar a redactar uno.';
-                prepareContractBtn.disabled = true;
-                return;
-            }
-
-            const quote = quotesHistory.find(q => q.id === quoteId);
-            const contract = contracts.find(c => c.quoteId === quoteId);
-            
-            currentContractNumber.textContent = `(Cotización N° ${quote.number})`;
-            editContractBtn.classList.remove('hidden');
-            prepareContractBtn.disabled = false; // Habilitar PDF
-
-            if (contract && contract.text) {
-                contractText.value = contract.text;
-                contractDisplayContent.textContent = contract.text;
-                contractDisplayContent.classList.remove('text-gray-500', 'italic');
-                editContractBtn.innerHTML = '<i class="fas fa-edit mr-2"></i> Editar Contrato';
-            } else {
-                contractDisplayContent.innerHTML = '<p class="text-gray-500 italic dark:text-gray-400">No hay un contrato guardado para esta cotización. Presione "Redactar Contrato" para iniciar.</p>';
-                contractText.value = `[Plantilla básica del contrato para ${quote.client.name} - Cotización ${quote.number}]`;
-                editContractBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Redactar Contrato';
-            }
-            
-            contractDisplayContent.classList.remove('hidden'); // Asegurar que el visualizador esté visible
-        }
-
-        // Función para cambiar entre el visualizador y el editor
-        function toggleContractEditMode() {
-            const quoteId = contractQuoteSelect.value;
-            if (!quoteId) return;
-
-            const editContractBtn = document.getElementById('edit-contract-btn');
-            const contractEditorArea = document.getElementById('contract-editor-area');
-            const contractDisplayContent = document.getElementById('contract-display-content');
-            
-            isContractEditing = !isContractEditing;
-            
-            if (isContractEditing) {
-                contractEditorArea.classList.remove('hidden');
-                contractDisplayContent.classList.add('hidden');
-                editContractBtn.innerHTML = '<i class="fas fa-eye mr-2"></i> Ver Contrato';
-                document.getElementById('save-contract-btn').disabled = false;
-            } else {
-                // Volviendo a modo visualizador, actualizar el contenido con el texto del textarea
-                contractEditorArea.classList.add('hidden');
-                contractDisplayContent.classList.remove('hidden');
-                
-                const currentText = document.getElementById('contract-text').value;
-                contractDisplayContent.textContent = currentText; 
-
-                editContractBtn.innerHTML = (currentText && currentText.trim().length > 0) ? '<i class="fas fa-edit mr-2"></i> Editar Contrato' : '<i class="fas fa-plus mr-2"></i> Redactar Contrato';
-            }
-        }
-        
-        // Función para guardar el contrato (llamada desde el botón "Guardar Contrato")
-        function saveContract() {
-            const quoteId = contractQuoteSelect.value;
-            const text = document.getElementById('contract-text').value;
-            if (!quoteId) return;
-
-            const contractIndex = contracts.findIndex(c => c.quoteId === quoteId);
-            
-            const existingContract = contracts[contractIndex] || {};
-            const config = existingContract.config || {};
-            
-            if (contractIndex > -1) {
-                contracts[contractIndex].text = text;
-            } else {
-                contracts.push({ quoteId, text, config });
-            }
-            localStorage.setItem('contracts', JSON.stringify(contracts));
-            showTemporaryMessage('Contrato guardado exitosamente.', 'success');
-            
-            // Volver a modo visualizador
-            toggleContractEditMode(); 
-        }
-
-        // VALIDACIÓN DE SUMA DE PAGOS EN EL MODAL DE CONFIGURACIÓN
-        function validatePaymentSum() {
-            const pct1 = parseFloat(document.getElementById('payment1Pct').value) || 0;
-            const pct2 = parseFloat(document.getElementById('payment2Pct').value) || 0;
-            const pct3 = parseFloat(document.getElementById('payment3Pct').value) || 0;
-            const total = pct1 + pct2 + pct3;
-            
-            const totalSpan = document.getElementById('paymentSumTotal');
-            const errorDiv = document.getElementById('paymentSumError');
-            const submitBtn = document.getElementById('generateContractBtn');
-            
-            totalSpan.textContent = `${total}%`;
-            
-            if (total !== 100) {
-                totalSpan.classList.add('text-red-600');
-                totalSpan.classList.remove('text-green-600');
-                errorDiv.style.display = 'block';
-                submitBtn.disabled = true;
-            } else {
-                totalSpan.classList.remove('text-red-600');
-                totalSpan.classList.add('text-green-600');
-                errorDiv.style.display = 'none';
-                submitBtn.disabled = false;
-            }
-        }
-        
-        function prepareContractGeneration() {
-            const quoteId = document.getElementById('contract-quote-select').value;
-            if (!quoteId) {
-                showTemporaryMessage('Debe seleccionar una cotización aceptada primero.', 'error');
-                return;
-            }
-            const contract = contracts.find(c => c.quoteId === quoteId);
-            const quote = quotesHistory.find(q => q.id === quoteId);
-
-            if (!contract || !contract.text || contract.text.trim().length === 0) {
-                showTemporaryMessage('No hay texto de contrato guardado. Edite y guarde el contrato antes de generar el PDF.', 'error');
-                return;
-            }
-
-            document.getElementById('contractQuoteId').value = quoteId;
-            // Configuración por defecto si no existe
-            const defaultConfig = {
-                devTerm: 30, devTimeUnit: 'días',
-                maintTerm: 12, maintTimeUnit: 'meses',
-                noticeDays: 30,
-                prestadorRepName: companySettings.repName || 'Tu Representante',
-                prestadorRepTitle: companySettings.repTitle || 'Gerente General',
-                clientContactTitle: 'Gerente Administrativo',
-                payment1Pct: 50, payment1Hito: 'Diseño y Planificación Aprobada',
-                payment2Pct: 0, payment2Hito: 'Entrega de Desarrollo Frontend',
-                payment3Pct: 50, payment3Hito: 'Aprobación Final y Puesta en Producción',
-                maintPaymentFreq: 'mensual'
-            };
-
-            const config = contract.config || defaultConfig;
-            
-            // Cargar valores al modal
-            document.getElementById('devTerm').value = config.devTerm;
-            document.getElementById('devTimeUnit').value = config.devTimeUnit;
-            document.getElementById('maintTerm').value = config.maintTerm;
-            document.getElementById('maintTimeUnit').value = config.maintTimeUnit;
-            document.getElementById('noticeDays').value = config.noticeDays;
-            document.getElementById('prestadorRepName').value = config.prestadorRepName;
-            document.getElementById('prestadorRepTitle').value = config.prestadorRepTitle;
-            document.getElementById('clientContactTitle').value = config.clientContactTitle;
-            document.getElementById('payment1Pct').value = config.payment1Pct;
-            document.getElementById('payment1Hito').value = config.payment1Hito;
-            document.getElementById('payment2Pct').value = config.payment2Pct;
-            document.getElementById('payment2Hito').value = config.payment2Hito;
-            document.getElementById('payment3Pct').value = config.payment3Pct;
-            document.getElementById('payment3Hito').value = config.payment3Hito;
-            document.getElementById('maintPaymentFreq').value = config.maintPaymentFreq;
-            
-            validatePaymentSum(); // Asegurar que la suma sea 100%
-
-            showQuickModal('contractConfigModal');
-        }
-
-        document.getElementById('contractConfigForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const quoteId = document.getElementById('contractQuoteId').value;
-            const contractIndex = contracts.findIndex(c => c.quoteId === quoteId);
-            
-            if (contractIndex === -1) {
-                showTemporaryMessage('Error: No se encontró el contrato para guardar la configuración.', 'error');
-                closeModal('contractConfigModal');
-                return;
-            }
-
-            // Recopilar configuración
-            const config = {
-                devTerm: parseInt(document.getElementById('devTerm').value),
-                devTimeUnit: document.getElementById('devTimeUnit').value,
-                maintTerm: parseInt(document.getElementById('maintTerm').value),
-                maintTimeUnit: document.getElementById('maintTimeUnit').value,
-                noticeDays: parseInt(document.getElementById('noticeDays').value),
-                prestadorRepName: document.getElementById('prestadorRepName').value,
-                prestadorRepTitle: document.getElementById('prestadorRepTitle').value,
-                clientContactTitle: document.getElementById('clientContactTitle').value,
-                payment1Pct: parseFloat(document.getElementById('payment1Pct').value),
-                payment1Hito: document.getElementById('payment1Hito').value,
-                payment2Pct: parseFloat(document.getElementById('payment2Pct').value),
-                payment2Hito: document.getElementById('payment2Hito').value,
-                payment3Pct: parseFloat(document.getElementById('payment3Pct').value),
-                payment3Hito: document.getElementById('payment3Hito').value,
-                maintPaymentFreq: document.getElementById('maintPaymentFreq').value
-            };
-            
-            contracts[contractIndex].config = config;
-            localStorage.setItem('contracts', JSON.stringify(contracts));
-            
-            // Proceder a generar PDF (simulado)
-            generateContractPDF(quoteId, config);
-            closeModal('contractConfigModal');
-        });
-
-        function generateContractPDF(quoteId, config) {
-            const quote = quotesHistory.find(q => q.id === quoteId);
-            const contractEntry = contracts.find(c => c.quoteId === quoteId);
-            
-            if (!quote || !contractEntry) return;
-
-            const client = quote.client;
-            
-            const contractName = `CONTRATO N° ${quote.number}`;
-            const contractContent = contractEntry.text;
-
-            // Simulación de reemplazos en la plantilla del contrato:
-            let finalContract = contractContent;
-            finalContract = finalContract.replace(/\[FECHA_EMISION\]/g, quote.issueDate);
-            finalContract = finalContract.replace(/\[CLIENTE_RS\]/g, client.name);
-            finalContract = finalContract.replace(/\[CLIENTE_RUC\]/g, client.ruc);
-            finalContract = finalContract.replace(/\[CLIENTE_DIRECCION\]/g, client.address || 'N/A');
-            finalContract = finalContract.replace(/\[PRESTADOR_RS\]/g, companySettings.name);
-            finalContract = finalContract.replace(/\[PRESTADOR_RUC\]/g, companySettings.ruc);
-            finalContract = finalContract.replace(/\[PRESTADOR_REPRESENTANTE\]/g, config.prestadorRepName);
-            finalContract = finalContract.replace(/\[PRESTADOR_CARGO\]/g, config.prestadorRepTitle);
-            finalContract = finalContract.replace(/\[TOTAL_LETRAS\]/g, 'El valor total en palabras'); // Necesitaría una función para esto
-            finalContract = finalContract.replace(/\[TOTAL_NUMEROS\]/g, `$${quote.total.toFixed(2)}`);
-            finalContract = finalContract.replace(/\[PLAZO_DESARROLLO\]/g, `${config.devTerm} ${config.devTimeUnit}`);
-            finalContract = finalContract.replace(/\[PLAZO_MANTENIMIENTO\]/g, `${config.maintTerm} ${config.maintTimeUnit}`);
-            finalContract = finalContract.replace(/\[PAGO_INICIAL_PCT\]/g, `${config.payment1Pct}%`);
-            finalContract = finalContract.replace(/\[PAGO_INICIAL_HITO\]/g, config.payment1Hito);
-            finalContract = finalContract.replace(/\[PAGO_FINAL_PCT\]/g, `${config.payment3Pct}%`);
-            finalContract = finalContract.replace(/\[PAGO_FINAL_HITO\]/g, config.payment3Hito);
-            finalContract = finalContract.replace(/\[CLIENTE_CARGO_FIRMA\]/g, config.clientContactTitle);
-            
-            if (config.payment2Pct > 0) {
-                 finalContract = finalContract.replace(/\[PAGO_INTERMEDIO_PCT\]/g, `${config.payment2Pct}%`);
-                 finalContract = finalContract.replace(/\[PAGO_INTERMEDIO_HITO\]/g, config.payment2Hito);
-            } else {
-                 finalContract = finalContract.replace(/\[PAGO_INTERMEDIO_PCT\]/g, '0%');
-                 finalContract = finalContract.replace(/\[PAGO_INTERMEDIO_HITO\]/g, 'No aplica');
-            }
-
-
-            // Creación del HTML para la impresión/descarga
-            const printContent = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; font-size: 11pt;">
-                    <h1 style="text-align: center; color: ${companySettings.accentColor};">${contractName}</h1>
-                    <hr style="margin-bottom: 20px; border-top: 2px solid ${companySettings.accentColor};">
-                    <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit;">${finalContract}</pre>
-
-                    <div style="margin-top: 50px; page-break-before: always;">
-                        <h2 style="text-align: center; margin-bottom: 50px;">SECCIÓN DE FIRMAS</h2>
-                        <div style="display: flex; justify-content: space-around; width: 100%;">
-                            <div style="width: 45%; text-align: center; border-top: 1px solid #000; padding-top: 10px;">
-                                <p style="font-weight: bold; margin: 0;">${config.prestadorRepName}</p>
-                                <p style="margin: 0;">${config.prestadorRepTitle}</p>
-                                <p style="margin: 0;">EL PRESTADOR (${companySettings.name})</p>
-                            </div>
-                            <div style="width: 45%; text-align: center; border-top: 1px solid #000; padding-top: 10px;">
-                                <p style="font-weight: bold; margin: 0;">(Nombre del Contacto)</p>
-                                <p style="margin: 0;">${config.clientContactTitle}</p>
-                                <p style="margin: 0;">EL CLIENTE (${client.name})</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('print-area').innerHTML = printContent;
-            window.print();
-            showTemporaryMessage(`Contrato ${contractName} listo para impresión/descarga.`, 'success');
-        }
-
-        function generatePrintableQuote() {
+                function generatePrintableQuote() {
             if (quoteItemsData.length === 0 || !tsQuoteClient.getValue()) {
                 showTemporaryMessage('Debe seleccionar un cliente y añadir al menos un servicio.', 'error');
                 return;
@@ -2336,11 +2408,12 @@
             // Imprimir
             const printContent = buildPrintableHtml(quoteData);
             document.getElementById('print-area').innerHTML = printContent;
-            window.print();
-            
+            setLastPrintableQuote(quoteData);
+            openQuoteDrawer();
+
             renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
             renderDashboard();
-            showTemporaryMessage(`Cotización ${quoteData.number} guardada e impresa.`, 'success');
+            showTemporaryMessage(`Cotización ${quoteData.number} guardada. Usa "Imprimir PDF" para obtenerla.`, 'success');
         }
 
         function reprintQuote(quoteId) {
@@ -2351,8 +2424,9 @@
             }
             const printContent = buildPrintableHtml(quoteData);
             document.getElementById('print-area').innerHTML = printContent;
-            window.print();
-            showTemporaryMessage(`Reimprimiendo Cotización ${quoteData.number}.`, 'info');
+            setLastPrintableQuote(quoteData);
+            openQuoteDrawer();
+            showTemporaryMessage(`Cotización ${quoteData.number} lista para imprimir desde el panel flotante.`, 'info');
         }
 
         function buildPrintableHtml(quoteData) {
@@ -2816,7 +2890,6 @@
                 clients: clients,
                 services: services,
                 quotesHistory: quotesHistory,
-                contracts: contracts,
                 quoteCounter: quoteCounter,
                 companySettings: companySettings
             };
@@ -2842,16 +2915,18 @@
                     clients = importedData.clients || [];
                     services = importedData.services || [];
                     quotesHistory = importedData.quotesHistory || [];
-                    contracts = importedData.contracts || [];
                     quoteCounter = importedData.quoteCounter || 1;
                     companySettings = { ...companySettings, ...importedData.companySettings };
 
                     localStorage.setItem('clients', JSON.stringify(clients));
                     localStorage.setItem('services', JSON.stringify(services));
                     localStorage.setItem('quotesHistory', JSON.stringify(quotesHistory));
-                    localStorage.setItem('contracts', JSON.stringify(contracts));
                     localStorage.setItem('quoteCounter', quoteCounter.toString());
                     localStorage.setItem('companySettings', JSON.stringify(companySettings));
+
+                    selectedClients.clear();
+                    selectedServices.clear();
+                    selectedQuotes.clear();
 
                     initializeData();
                     showTemporaryMessage('Importación de datos completa y exitosa.', 'success');
@@ -2905,9 +2980,7 @@
             
             setHistoryFilter(currentHistoryFilter); 
             setDashboardFilter(currentDashboardFilter); // Usar el nuevo setDashboardFilter
-            
-            renderContractsPage(contractClientFilterId);
-            
+
             document.querySelectorAll('.tab-button')[0].classList.add('active');
             document.querySelectorAll('.tab-content')[0].classList.add('active');
         }

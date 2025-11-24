@@ -212,117 +212,108 @@
             font-weight: 600;
         }
 
-        #quote-drawer {
-            position: fixed;
-            right: 0;
-            top: 50%;
-            bottom: auto;
-            left: auto;
-            transform: translateY(-50%);
-            z-index: 40;
-            display: flex;
-            flex-direction: row;
-            align-items: stretch;
-            gap: 0.5rem;
-            padding: 1rem 0 1rem 1rem;
-            transition: transform 0.3s ease;
-            pointer-events: none;
+        /* Acordeón para el área de impresión de cotizaciones */
+        .quote-accordion {
+            width: min(1200px, 100%);
+            margin: 1.5rem auto 2rem;
+            padding: 0 1rem;
         }
 
-        .drawer-toggle {
-            border-radius: 1.5rem 0 0 1.5rem;
+        .quote-accordion-inner {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.06), rgba(37, 99, 235, 0.04));
             border: 1px solid rgba(79, 70, 229, 0.12);
-            box-shadow: 0 15px 45px -18px rgba(79, 70, 229, 0.45);
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 12px 40px -18px rgba(79, 70, 229, 0.45);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
 
-        #quote-drawer .drawer-toggle,
-        #quote-drawer .quote-drawer-panel {
+        .quote-accordion.open .quote-accordion-inner {
+            transform: translateY(-2px);
+            box-shadow: 0 18px 48px -18px rgba(79, 70, 229, 0.55);
+        }
+
+        .quote-accordion-toggle {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(6px);
+            color: #1f2937;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .quote-accordion-toggle:hover {
+            background-color: #eef2ff;
+        }
+
+        .quote-accordion-toggle:focus-visible,
+        .quote-accordion-panel button:focus-visible {
+            outline: 3px solid rgba(129, 140, 248, 0.65);
+            outline-offset: 2px;
+        }
+
+        .dark .quote-accordion-toggle {
+            background-color: rgba(55, 65, 81, 0.8);
+            color: #e5e7eb;
+        }
+
+        .quote-accordion-panel {
+            background-color: #fff;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            pointer-events: none;
+            transition: max-height 0.35s ease, opacity 0.25s ease;
+            border-top: 1px solid rgba(79, 70, 229, 0.12);
+        }
+
+        .quote-accordion.open .quote-accordion-panel {
+            opacity: 1;
             pointer-events: auto;
         }
 
-        #quote-drawer .drawer-toggle:focus-visible,
-        #quote-drawer .drawer-print-btn:focus-visible,
-        #quote-drawer #closeQuoteDrawer:focus-visible {
-            outline: 3px solid rgba(129, 140, 248, 0.65);
-            outline-offset: 2px;
+        .quote-accordion-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .quote-accordion-panel::-webkit-scrollbar-thumb {
+            background-color: rgba(79, 70, 229, 0.35);
+            border-radius: 9999px;
+        }
+
+        .dark .quote-accordion-panel::-webkit-scrollbar-thumb {
+            background-color: rgba(129, 140, 248, 0.45);
         }
 
         .drawer-print-btn {
             white-space: nowrap;
         }
 
-        .quote-drawer-panel {
-            width: min(78vw, 820px);
-            max-width: 90vw;
-            max-height: calc(100vh - 3rem);
-            border-radius: 1.5rem 0 0 1.5rem;
-            backdrop-filter: blur(4px);
-        }
-
-        .quote-drawer-panel::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .quote-drawer-panel::-webkit-scrollbar-thumb {
-            background-color: rgba(79, 70, 229, 0.35);
-            border-radius: 9999px;
-        }
-
-        .dark .quote-drawer-panel::-webkit-scrollbar-thumb {
-            background-color: rgba(129, 140, 248, 0.45);
-        }
-
-        #quote-drawer.drawer-open .quote-drawer-panel {
-            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.35);
-        }
-
-        #quote-drawer.drawer-open .drawer-toggle {
-            box-shadow: 0 16px 45px -18px rgba(79, 70, 229, 0.55);
-        }
-
         @media (max-width: 768px) {
-            #quote-drawer {
-                right: 0;
-                left: 0;
-                top: auto;
-                bottom: 0;
-                transform: translateY(0);
-                padding: 0.75rem;
-                flex-direction: column;
-                align-items: center;
-                gap: 0.75rem;
+            .quote-accordion {
+                padding: 0.5rem;
             }
 
-            .drawer-toggle {
-                border-radius: 9999px;
-                width: min(360px, 92vw);
+            .quote-accordion-toggle {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
             }
 
             .drawer-print-btn {
                 width: 100%;
                 justify-content: center;
             }
-
-            .quote-drawer-panel {
-                width: min(96vw, 560px);
-                max-height: 70vh;
-                border-radius: 1.25rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            #quote-drawer {
-                gap: 0.5rem;
-            }
-
-            .quote-drawer-panel {
-                max-height: 65vh;
-            }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            #quote-drawer,
-            #quote-drawer * {
+            .quote-accordion,
+            .quote-accordion * {
                 transition: none !important;
             }
         }
@@ -850,38 +841,52 @@
         </main>
     </div>
 
-    <!-- Panel flotante para impresión de cotizaciones -->
-    <div id="quote-drawer" class="fixed z-40">
-        <div id="quoteDrawerPanel" aria-hidden="true" class="quote-drawer-panel bg-white dark:bg-gray-800 shadow-2xl transform translate-x-full transition-transform duration-300 border border-indigo-100/60 dark:border-indigo-500/20 flex flex-col">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-600 dark:text-indigo-400">Cotizaciones</p>
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Área de impresión</h3>
+    <!-- Acordeón para impresión de cotizaciones -->
+    <section id="quote-accordion" class="quote-accordion">
+        <div class="quote-accordion-inner">
+            <button id="quoteAccordionToggle" aria-expanded="false" aria-controls="quoteAccordionPanel" class="quote-accordion-toggle">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-600 text-white shadow-md">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </span>
+                    <div class="text-left">
+                        <p class="text-xs uppercase tracking-[0.28em] text-indigo-600 dark:text-indigo-300">Cotizaciones</p>
+                        <p class="text-base font-semibold text-gray-800 dark:text-gray-100">Área de impresión</p>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button id="printQuoteBtn" type="button" class="drawer-print-btn inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed" title="Imprimir cotización como PDF">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Imprimir PDF</span>
-                    </button>
-                    <button id="closeQuoteDrawer" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 transition" aria-label="Cerrar área de cotizaciones">
-                        <i class="fas fa-times text-lg"></i>
-                    </button>
+                <div class="flex items-center gap-3">
+                    <span id="quoteAccordionHint" class="text-sm font-medium text-indigo-700 dark:text-indigo-200">Mostrar detalle</span>
+                    <i id="quoteAccordionIcon" class="fas fa-chevron-down text-indigo-600 dark:text-indigo-300"></i>
                 </div>
-            </div>
-            <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/70">
-                <div id="print-area" class="p-6 bg-white dark:bg-gray-800">
-                    <div class="text-sm text-gray-500 dark:text-gray-300">
-                        <p class="font-medium">Genera una cotización para visualizarla aquí.</p>
-                        <p class="mt-2 text-xs text-gray-400 dark:text-gray-400 leading-relaxed">Las cotizaciones se mostrarán en este panel sin afectar el diseño principal y podrás imprimirlas cuando lo necesites.</p>
+            </button>
+            <div id="quoteAccordionPanel" class="quote-accordion-panel" aria-hidden="true">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-600 dark:text-indigo-400">Cotizaciones</p>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Área de impresión</h3>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap justify-end">
+                        <button id="printQuoteBtn" type="button" class="drawer-print-btn inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed" title="Imprimir cotización como PDF">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Imprimir PDF</span>
+                        </button>
+                        <button id="closeQuoteAccordion" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition text-sm font-semibold flex items-center gap-2" aria-label="Ocultar área de cotizaciones">
+                            <i class="fas fa-chevron-up"></i>
+                            <span>Ocultar</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/70" style="max-height: 70vh;">
+                    <div id="print-area" class="p-6 bg-white dark:bg-gray-800">
+                        <div class="text-sm text-gray-500 dark:text-gray-300">
+                            <p class="font-medium">Genera una cotización para visualizarla aquí.</p>
+                            <p class="mt-2 text-xs text-gray-400 dark:text-gray-400 leading-relaxed">Las cotizaciones se mostrarán en este panel sin afectar el diseño principal y podrás imprimirlas cuando lo necesites.</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <button id="toggleQuoteDrawer" aria-expanded="false" aria-controls="quoteDrawerPanel" class="drawer-toggle bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-5 shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition flex flex-col items-center justify-center gap-2">
-            <i id="quoteDrawerToggleIcon" class="fas fa-chevron-left text-lg"></i>
-            <span class="uppercase text-xs tracking-widest font-semibold">Cotización</span>
-        </button>
-    </div>
+    </section>
 
 
     <script>
@@ -906,13 +911,14 @@
             }
         }
 
-        // --- PANEL FLOTANTE DE COTIZACIONES ---
+        // --- ACORDEÓN DE COTIZACIONES ---
         const quoteDrawer = (() => {
-            const drawerPanel = document.getElementById('quoteDrawerPanel');
-            const drawerContainer = document.getElementById('quote-drawer');
-            const toggleBtn = document.getElementById('toggleQuoteDrawer');
-            const toggleIcon = document.getElementById('quoteDrawerToggleIcon');
-            const closeBtn = document.getElementById('closeQuoteDrawer');
+            const accordion = document.getElementById('quote-accordion');
+            const panel = document.getElementById('quoteAccordionPanel');
+            const toggleBtn = document.getElementById('quoteAccordionToggle');
+            const toggleIcon = document.getElementById('quoteAccordionIcon');
+            const toggleHint = document.getElementById('quoteAccordionHint');
+            const closeBtn = document.getElementById('closeQuoteAccordion');
             const printBtn = document.getElementById('printQuoteBtn');
             const printArea = document.getElementById('print-area');
             const cloneQuote = (payload) => typeof structuredClone === 'function' ? structuredClone(payload) : JSON.parse(JSON.stringify(payload));
@@ -926,45 +932,47 @@
                 if (printBtn) printBtn.disabled = !state.lastQuote;
             };
 
+            const syncPanelHeight = () => {
+                if (!panel) return;
+                if (state.isOpen) {
+                    panel.style.maxHeight = `${panel.scrollHeight}px`;
+                    panel.setAttribute('aria-hidden', 'false');
+                } else {
+                    panel.style.maxHeight = '0px';
+                    panel.setAttribute('aria-hidden', 'true');
+                }
+            };
+
             const renderQuote = (quoteData) => {
                 if (!printArea || !quoteData) return;
                 printArea.innerHTML = buildPrintableHtml(quoteData);
+                requestAnimationFrame(syncPanelHeight);
             };
 
             const open = () => {
-                if (!drawerPanel) return;
-                drawerPanel.classList.remove('translate-x-full');
-                drawerPanel.classList.add('translate-x-0');
-                drawerPanel.setAttribute('aria-hidden', 'false');
-                if (drawerContainer) drawerContainer.classList.add('drawer-open');
-                if (toggleBtn) {
-                    toggleBtn.setAttribute('aria-expanded', 'true');
-                    toggleBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
-                    toggleBtn.classList.add('bg-indigo-700', 'hover:bg-indigo-800');
-                }
-                if (toggleIcon) {
-                    toggleIcon.classList.remove('fa-chevron-left');
-                    toggleIcon.classList.add('fa-chevron-right');
-                }
+                if (!accordion || !panel) return;
+                accordion.classList.add('open');
                 state.isOpen = true;
+                syncPanelHeight();
+                if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+                if (toggleIcon) {
+                    toggleIcon.classList.remove('fa-chevron-down');
+                    toggleIcon.classList.add('fa-chevron-up');
+                }
+                if (toggleHint) toggleHint.textContent = 'Ocultar detalle';
             };
 
             const close = () => {
-                if (!drawerPanel) return;
-                drawerPanel.classList.add('translate-x-full');
-                drawerPanel.classList.remove('translate-x-0');
-                drawerPanel.setAttribute('aria-hidden', 'true');
-                if (drawerContainer) drawerContainer.classList.remove('drawer-open');
-                if (toggleBtn) {
-                    toggleBtn.setAttribute('aria-expanded', 'false');
-                    toggleBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-                    toggleBtn.classList.remove('bg-indigo-700', 'hover:bg-indigo-800');
-                }
-                if (toggleIcon) {
-                    toggleIcon.classList.add('fa-chevron-left');
-                    toggleIcon.classList.remove('fa-chevron-right');
-                }
+                if (!accordion || !panel) return;
+                accordion.classList.remove('open');
                 state.isOpen = false;
+                syncPanelHeight();
+                if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+                if (toggleIcon) {
+                    toggleIcon.classList.add('fa-chevron-down');
+                    toggleIcon.classList.remove('fa-chevron-up');
+                }
+                if (toggleHint) toggleHint.textContent = 'Mostrar detalle';
             };
 
             const toggle = () => state.isOpen ? close() : open();
@@ -995,10 +1003,15 @@
                 document.addEventListener('keydown', (event) => {
                     if (event.key === 'Escape' && state.isOpen) close();
                 });
+
+                window.addEventListener('resize', () => {
+                    if (state.isOpen) syncPanelHeight();
+                });
             };
 
             const init = () => {
                 syncPrintButton();
+                syncPanelHeight();
                 attachEvents();
             };
 

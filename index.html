@@ -321,43 +321,36 @@
         @media print {
             @page {
                 size: A4;
-                margin: 14mm;
+                margin: 0;
             }
+
+            body {
+                font-family: 'Inter', sans-serif;
+            }
+
+            /* 1. Ocultar todo por defecto */
             body * {
                 visibility: hidden;
             }
+
+            /* 2. Mostrar únicamente el área imprimible */
             #print-area, #print-area * {
                 visibility: visible;
             }
+
+            /* 3. Expandir el área a toda la hoja */
             #print-area {
-                position: static;
-                width: auto;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
                 margin: 0;
                 padding: 0;
-                box-sizing: border-box;
+                background-color: white;
             }
+
             .no-print {
-                display: none;
-            }
-            /* Ensure text contrast for dark mode elements on white paper */
-            body {
-                background-color: white !important;
-                color: black !important;
-            }
-            #print-area * {
-                color: black !important;
-                background-color: white !important;
-                box-shadow: none !important;
-                text-shadow: none !important;
-            }
-            .quote-item-table th {
-                border-bottom: 1px solid #ccc !important;
-            }
-            .quote-footer-table td {
-                border: none !important;
-            }
-            .quote-footer-table .total-row {
-                border-top: 2px solid #000 !important;
+                display: none !important;
             }
         }
     </style>
@@ -623,6 +616,53 @@
                 </div>
             </div>
 
+            <!-- Área de impresión exclusiva del cotizador -->
+            <section id="quote-accordion" class="quote-accordion">
+                <div class="quote-accordion-inner">
+                    <button id="quoteAccordionToggle" aria-expanded="false" aria-controls="quoteAccordionPanel" class="quote-accordion-toggle">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-600 text-white shadow-md">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                            </span>
+                            <div class="text-left">
+                                <p class="text-xs uppercase tracking-[0.28em] text-indigo-600 dark:text-indigo-300">Cotizaciones</p>
+                                <p class="text-base font-semibold text-gray-800 dark:text-gray-100">Área de impresión</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span id="quoteAccordionHint" class="text-sm font-medium text-indigo-700 dark:text-indigo-200">Mostrar detalle</span>
+                            <i id="quoteAccordionIcon" class="fas fa-chevron-down text-indigo-600 dark:text-indigo-300"></i>
+                        </div>
+                    </button>
+                    <div id="quoteAccordionPanel" class="quote-accordion-panel" aria-hidden="true">
+                        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-600 dark:text-indigo-400">Cotizaciones</p>
+                                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Área de impresión</h3>
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap justify-end">
+                                <button id="printQuoteBtn" type="button" class="drawer-print-btn inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed" title="Imprimir cotización como PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span>Imprimir PDF</span>
+                                </button>
+                                <button id="closeQuoteAccordion" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition text-sm font-semibold flex items-center gap-2" aria-label="Ocultar área de cotizaciones">
+                                    <i class="fas fa-chevron-up"></i>
+                                    <span>Ocultar</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/70" style="max-height: 70vh;">
+                            <div id="print-area" class="p-6 bg-white dark:bg-gray-800">
+                                <div class="text-sm text-gray-500 dark:text-gray-300">
+                                    <p class="font-medium">Genera una cotización para visualizarla aquí.</p>
+                                    <p class="mt-2 text-xs text-gray-400 dark:text-gray-400 leading-relaxed">Las cotizaciones se mostrarán en este panel sin afectar el diseño principal y podrás imprimirlas cuando lo necesites.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Pestaña: Dashboard (ACTUALIZADA con Filtro de Tiempo y Dark Mode) -->
             <div id="dashboard" class="tab-content">
                 <div class="bg-white p-6 rounded-xl shadow-lg dark:bg-gray-700">
@@ -842,54 +882,6 @@
             </div>
         </main>
     </div>
-
-    <!-- Acordeón para impresión de cotizaciones -->
-    <section id="quote-accordion" class="quote-accordion">
-        <div class="quote-accordion-inner">
-            <button id="quoteAccordionToggle" aria-expanded="false" aria-controls="quoteAccordionPanel" class="quote-accordion-toggle">
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-600 text-white shadow-md">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                    </span>
-                    <div class="text-left">
-                        <p class="text-xs uppercase tracking-[0.28em] text-indigo-600 dark:text-indigo-300">Cotizaciones</p>
-                        <p class="text-base font-semibold text-gray-800 dark:text-gray-100">Área de impresión</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span id="quoteAccordionHint" class="text-sm font-medium text-indigo-700 dark:text-indigo-200">Mostrar detalle</span>
-                    <i id="quoteAccordionIcon" class="fas fa-chevron-down text-indigo-600 dark:text-indigo-300"></i>
-                </div>
-            </button>
-            <div id="quoteAccordionPanel" class="quote-accordion-panel" aria-hidden="true">
-                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-600 dark:text-indigo-400">Cotizaciones</p>
-                        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Área de impresión</h3>
-                    </div>
-                    <div class="flex items-center gap-2 flex-wrap justify-end">
-                        <button id="printQuoteBtn" type="button" class="drawer-print-btn inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed" title="Imprimir cotización como PDF">
-                            <i class="fas fa-file-pdf"></i>
-                            <span>Imprimir PDF</span>
-                        </button>
-                        <button id="closeQuoteAccordion" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition text-sm font-semibold flex items-center gap-2" aria-label="Ocultar área de cotizaciones">
-                            <i class="fas fa-chevron-up"></i>
-                            <span>Ocultar</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/70" style="max-height: 70vh;">
-                    <div id="print-area" class="p-6 bg-white dark:bg-gray-800">
-                        <div class="text-sm text-gray-500 dark:text-gray-300">
-                            <p class="font-medium">Genera una cotización para visualizarla aquí.</p>
-                            <p class="mt-2 text-xs text-gray-400 dark:text-gray-400 leading-relaxed">Las cotizaciones se mostrarán en este panel sin afectar el diseño principal y podrás imprimirlas cuando lo necesites.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
 
     <script>
         // --- LÓGICA DE MODALES (General) ---
@@ -2477,94 +2469,95 @@
 
         function buildPrintableHtml(quoteData) {
             const client = quoteData.client || {};
+            const cs = { ...companySettings, ...(quoteData.companySettings || {}) };
+            const primaryColor = cs.primaryColor || '#4f46e5';
+            const accentColor = cs.accentColor || '#ea580c';
             const itemsHtml = quoteData.items.map(item => `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px; width: 5%; text-align: center;">${item.quantity}</td>
-                    <td style="padding: 8px; width: 45%;">
-                        <span style="font-weight: bold;">${item.name} (${item.code})</span><br>
-                        <span style="font-size: 0.85em; white-space: pre-wrap;">${item.description || ''}</span>
+                <tr class="border-b">
+                    <td class="py-3 px-4 align-top">
+                        <p class="font-semibold">${item.name} (${item.code})</p>
+                        <p class="text-sm text-gray-600 pl-2 mt-1 whitespace-pre-wrap">${item.description || ''}</p>
                     </td>
-                    <td style="padding: 8px; width: 20%; text-align: right;">$${item.price.toFixed(2)}</td>
-                    <td style="padding: 8px; width: 30%; text-align: right; font-weight: bold;">$${(item.price * item.quantity).toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center align-top">${item.quantity}</td>
+                    <td class="py-3 px-4 text-right align-top">$${Number(item.price).toFixed(2)}</td>
+                    <td class="py-3 px-4 text-right align-top">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
                 </tr>
             `).join('');
 
-            const logoHtml = companySettings.logo ? `<img src="${companySettings.logo}" alt="Logo" style="max-height: 80px; width: auto; object-fit: contain;">` : '';
-            const validityDate = quoteData.validityDate ? new Date(quoteData.validityDate).toLocaleDateString('es-EC') : 'N/A';
-            const issueDate = quoteData.issueDate || 'N/A';
-            const accentColor = companySettings.accentColor || '#4f46e5';
+            const notesHtml = quoteData.notes ? `<div class="mt-10 pt-4 border-t"><h4 class="font-bold text-sm mb-2">Notas:</h4><p class="text-xs text-gray-600 whitespace-pre-wrap">${quoteData.notes}</p></div>` : '';
+
+            let footerLinksHtml = '';
+            if (cs.website || cs.whatsapp) {
+                const websiteLink = cs.website ? `<a href="${cs.website}" target="_blank" class="text-sm" style="color: ${primaryColor}; text-decoration: none;">${cs.website}</a>` : '';
+                const whatsappLink = cs.whatsapp ? `<span class="text-sm" style="color: ${primaryColor};"> | WA: ${cs.whatsapp}</span>` : '';
+                footerLinksHtml = `<div class="mb-4 text-center">${websiteLink}${whatsappLink}</div>`;
+            }
+
+            const logoHtml = cs.logo ? `<img src="${cs.logo}" alt="Logo" style="max-height: 80px; width: auto;">` : '';
 
             return `
-                <div style="font-family: ${companySettings.typography || 'Inter, sans-serif'}; font-size: 10pt; line-height: 1.5; color: #333; width: 100%; max-width: 100%; margin: 0; padding: 18mm; box-sizing: border-box;">
-                    <!-- Header Section -->
-                    <table style="width: 100%; margin-bottom: 20px;">
-                        <tr>
-                            <td style="width: 50%; vertical-align: top;">
-                                ${logoHtml}
-                                <h1 style="font-size: 1.5em; margin: 5px 0 2px 0; color: ${accentColor};">${companySettings.name}</h1>
-                                <p style="margin: 0; font-size: 0.9em;">${companySettings.address}</p>
-                                <p style="margin: 0; font-size: 0.9em;">${companySettings.contact}</p>
-                                <p style="margin: 0; font-size: 0.9em;">${companySettings.website || 'Web: N/A'}</p>
-                            </td>
-                            <td style="width: 50%; text-align: right; vertical-align: top;">
-                                <div style="background-color: #f3f4f6; padding: 10px; border-radius: 5px; border-left: 5px solid ${accentColor};">
-                                    <h2 style="font-size: 1.8em; margin: 0 0 5px 0; color: ${accentColor};">COTIZACIÓN N° ${quoteData.number}</h2>
-                                    <p style="margin: 0; font-weight: bold;">Fecha de Emisión: ${issueDate}</p>
-                                    <p style="margin: 0;">Válido hasta: ${validityDate}</p>
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
+                <div class="p-8 max-w-4xl mx-auto bg-white font-sans" style="font-family: ${cs.typography || 'sans-serif'}">
+                    <header class="flex justify-between items-start mb-10 pb-4 border-b">
+                        <div class="w-1/2">${logoHtml}</div>
+                        <div class="w-1/2 text-right">
+                            <h1 class="text-3xl font-bold" style="color: ${primaryColor};">COTIZACIÓN</h1>
+                            <p class="text-gray-600 mt-1">Nº: ${quoteData.number}</p>
+                        </div>
+                    </header>
 
-                    <!-- Client Details -->
-                    <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                        <p style="margin: 0; font-weight: bold; color: ${accentColor};">CLIENTE:</p>
-                        <p style="margin: 0; font-size: 1.1em; font-weight: bold;">${client.name || 'Cliente Desconocido'}</p>
-                        <p style="margin: 0; font-size: 0.9em;">RUC/C.I.: ${client.ruc || 'N/A'}</p>
-                        <p style="margin: 0; font-size: 0.9em;">Dir.: ${client.address || 'N/A'} (${client.city || 'N/A'})</p>
-                        <p style="margin: 0; font-size: 0.9em;">Contacto: ${client.contact || 'N/A'}</p>
-                    </div>
-
-                    <!-- Items Table -->
-                    <table class="quote-item-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                        <thead style="background-color: #f3f4f6; border-bottom: 2px solid ${accentColor};">
-                            <tr>
-                                <th style="padding: 8px; text-align: center; width: 5%;">Cant.</th>
-                                <th style="padding: 8px; text-align: left; width: 45%;">Descripción del Servicio/Producto</th>
-                                <th style="padding: 8px; text-align: right; width: 20%;">P. Unitario</th>
-                                <th style="padding: 8px; text-align: right; width: 30%;">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsHtml}
-                        </tbody>
-                    </table>
-
-                    <!-- Totals and Notes -->
-                    <div style="display: flex; justify-content: flex-end;">
-                        <div style="width: 40%;">
-                            <table class="quote-footer-table" style="width: 100%; border-collapse: collapse;">
-                                <tr>
-                                    <td style="padding: 5px 0;">Subtotal:</td>
-                                    <td style="text-align: right; padding: 5px 0;">$${quoteData.subtotal.toFixed(2)}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 5px 0;">IVA (15%):</td>
-                                    <td style="text-align: right; padding: 5px 0;">$${quoteData.iva.toFixed(2)}</td>
-                                </tr>
-                                <tr class="total-row" style="font-size: 1.2em; font-weight: bold; color: ${accentColor};">
-                                    <td style="padding: 10px 0; border-top: 2px solid #000;">TOTAL:</td>
-                                    <td style="text-align: right; padding: 10px 0; border-top: 2px solid #000;">$${quoteData.total.toFixed(2)}</td>
-                                </tr>
-                            </table>
+                    <div class="grid grid-cols-2 gap-8 mb-10">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="font-bold text-gray-700 mb-2 uppercase text-sm">Cliente:</h3>
+                            <p class="font-semibold">${client.name || ''}</p>
+                            <p>RUC/C.I.: ${client.ruc || ''}</p>
+                            <p>${client.contact || ''}</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="font-bold text-gray-700 mb-2 uppercase text-sm">De:</h3>
+                            <p class="font-semibold">${cs.name || ''}</p>
+                            <p>${cs.address || ''}</p>
+                            <p>${cs.contact || ''}</p>
                         </div>
                     </div>
 
-                    <!-- Notes Section -->
-                    <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 10px;">
-                        <p style="font-weight: bold; margin-bottom: 5px; color: ${accentColor};">NOTAS ADICIONALES:</p>
-                        <p style="white-space: pre-wrap; font-size: 0.9em;">${quoteData.notes || 'No hay notas adicionales especificadas.'}</p>
+                    <div class="grid grid-cols-2 gap-8 mb-10">
+                        <div>
+                            <h3 class="font-bold text-gray-700 mb-2 uppercase text-sm">Fechas:</h3>
+                            <p>Emisión: ${quoteData.issueDate || ''}</p>
+                            <p>Válida hasta: ${quoteData.validityDate || ''}</p>
+                        </div>
                     </div>
+
+                    <table class="w-full mb-8">
+                        <thead style="background-color: ${primaryColor}; color: white;">
+                            <tr>
+                                <th class="py-2 px-4 text-left font-semibold">Descripción</th>
+                                <th class="py-2 px-4 text-center font-semibold">Cant.</th>
+                                <th class="py-2 px-4 text-right font-semibold">P. Unit</th>
+                                <th class="py-2 px-4 text-right font-semibold">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemsHtml}</tbody>
+                    </table>
+
+                    <div class="flex justify-end">
+                        <div class="w-full md:w-1/2 lg:w-2/5">
+                            <div class="flex justify-between py-2"><span class="font-medium">Subtotal:</span><span>$${Number(quoteData.subtotal).toFixed(2)}</span></div>
+                            <div class="flex justify-between py-2"><span class="font-medium">IVA (15%):</span><span>$${Number(quoteData.iva).toFixed(2)}</span></div>
+                            <div class="flex justify-between py-3 mt-2 border-t-2" style="border-color: ${primaryColor};">
+                                <span class="font-bold text-xl" style="color: ${accentColor};">TOTAL:</span>
+                                <span class="font-bold text-xl" style="color: ${accentColor};">$${Number(quoteData.total).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${notesHtml}
+
+                    <footer class="mt-16 text-center text-gray-500">
+                        ${footerLinksHtml}
+                        <p class="text-sm">Gracias por su preferencia.</p>
+                        <p class="text-xs">Documento generado por sistema.</p>
+                    </footer>
                 </div>
             `;
         }

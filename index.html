@@ -319,6 +319,10 @@
         }
 
         @media print {
+            @page {
+                size: A4;
+                margin: 14mm;
+            }
             body * {
                 visibility: hidden;
             }
@@ -326,13 +330,11 @@
                 visibility: visible;
             }
             #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                /* Reset margins and padding for printing */
+                position: static;
+                width: auto;
                 margin: 0;
                 padding: 0;
+                box-sizing: border-box;
             }
             .no-print {
                 display: none;
@@ -2493,7 +2495,7 @@
             const accentColor = companySettings.accentColor || '#4f46e5';
 
             return `
-                <div style="font-family: ${companySettings.typography || 'Inter, sans-serif'}; font-size: 10pt; line-height: 1.5; color: #333; max-width: 800px; margin: 0 auto; padding: 20px;">
+                <div style="font-family: ${companySettings.typography || 'Inter, sans-serif'}; font-size: 10pt; line-height: 1.5; color: #333; width: 100%; max-width: 100%; margin: 0; padding: 18mm; box-sizing: border-box;">
                     <!-- Header Section -->
                     <table style="width: 100%; margin-bottom: 20px;">
                         <tr>

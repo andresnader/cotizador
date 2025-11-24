@@ -223,13 +223,16 @@
             display: flex;
             flex-direction: row;
             align-items: stretch;
-            gap: 0;
+            gap: 0.5rem;
+            padding: 1rem 0 1rem 1rem;
             transition: transform 0.3s ease;
             pointer-events: none;
         }
 
         .drawer-toggle {
             border-radius: 1.5rem 0 0 1.5rem;
+            border: 1px solid rgba(79, 70, 229, 0.12);
+            box-shadow: 0 15px 45px -18px rgba(79, 70, 229, 0.45);
         }
 
         #quote-drawer .drawer-toggle,
@@ -237,14 +240,23 @@
             pointer-events: auto;
         }
 
+        #quote-drawer .drawer-toggle:focus-visible,
+        #quote-drawer .drawer-print-btn:focus-visible,
+        #quote-drawer #closeQuoteDrawer:focus-visible {
+            outline: 3px solid rgba(129, 140, 248, 0.65);
+            outline-offset: 2px;
+        }
+
         .drawer-print-btn {
             white-space: nowrap;
         }
 
         .quote-drawer-panel {
-            width: min(80vw, 880px);
-            max-height: 90vh;
+            width: min(78vw, 820px);
+            max-width: 90vw;
+            max-height: calc(100vh - 3rem);
             border-radius: 1.5rem 0 0 1.5rem;
+            backdrop-filter: blur(4px);
         }
 
         .quote-drawer-panel::-webkit-scrollbar {
@@ -265,7 +277,7 @@
         }
 
         #quote-drawer.drawer-open .drawer-toggle {
-            box-shadow: 0 10px 25px -10px rgba(79, 70, 229, 0.4);
+            box-shadow: 0 16px 45px -18px rgba(79, 70, 229, 0.55);
         }
 
         @media (max-width: 768px) {
@@ -275,7 +287,7 @@
                 top: auto;
                 bottom: 0;
                 transform: translateY(0);
-                padding: 0 1rem 1.25rem;
+                padding: 0.75rem;
                 flex-direction: column;
                 align-items: center;
                 gap: 0.75rem;
@@ -283,7 +295,7 @@
 
             .drawer-toggle {
                 border-radius: 9999px;
-                width: min(320px, 90vw);
+                width: min(360px, 92vw);
             }
 
             .drawer-print-btn {
@@ -292,9 +304,26 @@
             }
 
             .quote-drawer-panel {
-                width: min(96vw, 540px);
+                width: min(96vw, 560px);
                 max-height: 70vh;
                 border-radius: 1.25rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #quote-drawer {
+                gap: 0.5rem;
+            }
+
+            .quote-drawer-panel {
+                max-height: 65vh;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #quote-drawer,
+            #quote-drawer * {
+                transition: none !important;
             }
         }
 
@@ -878,97 +907,105 @@
         }
 
         // --- PANEL FLOTANTE DE COTIZACIONES ---
-        const quoteDrawerPanel = document.getElementById('quoteDrawerPanel');
-        const quoteDrawerContainer = document.getElementById('quote-drawer');
-        const toggleQuoteDrawerBtn = document.getElementById('toggleQuoteDrawer');
-        const quoteDrawerToggleIcon = document.getElementById('quoteDrawerToggleIcon');
-        const closeQuoteDrawerBtn = document.getElementById('closeQuoteDrawer');
-        const printQuoteBtn = document.getElementById('printQuoteBtn');
-        let isQuoteDrawerOpen = false;
-        let lastPrintableQuoteData = null;
+        const quoteDrawer = (() => {
+            const drawerPanel = document.getElementById('quoteDrawerPanel');
+            const drawerContainer = document.getElementById('quote-drawer');
+            const toggleBtn = document.getElementById('toggleQuoteDrawer');
+            const toggleIcon = document.getElementById('quoteDrawerToggleIcon');
+            const closeBtn = document.getElementById('closeQuoteDrawer');
+            const printBtn = document.getElementById('printQuoteBtn');
+            const printArea = document.getElementById('print-area');
+            const cloneQuote = (payload) => typeof structuredClone === 'function' ? structuredClone(payload) : JSON.parse(JSON.stringify(payload));
 
-        function updatePrintButtonState(hasQuote) {
-            if (!printQuoteBtn) return;
-            printQuoteBtn.disabled = !hasQuote;
-        }
+            const state = {
+                isOpen: false,
+                lastQuote: null
+            };
 
-        function setLastPrintableQuote(quoteData) {
-            lastPrintableQuoteData = JSON.parse(JSON.stringify(quoteData));
-            updatePrintButtonState(true);
-        }
+            const syncPrintButton = () => {
+                if (printBtn) printBtn.disabled = !state.lastQuote;
+            };
 
-        function openQuoteDrawer() {
-            if (!quoteDrawerPanel) return;
-            quoteDrawerPanel.classList.remove('translate-x-full');
-            quoteDrawerPanel.classList.add('translate-x-0');
-            quoteDrawerPanel.setAttribute('aria-hidden', 'false');
-            if (quoteDrawerContainer) quoteDrawerContainer.classList.add('drawer-open');
-            if (toggleQuoteDrawerBtn) {
-                toggleQuoteDrawerBtn.setAttribute('aria-expanded', 'true');
-                toggleQuoteDrawerBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
-                toggleQuoteDrawerBtn.classList.add('bg-indigo-700', 'hover:bg-indigo-800');
-            }
-            if (quoteDrawerToggleIcon) {
-                quoteDrawerToggleIcon.classList.remove('fa-chevron-left');
-                quoteDrawerToggleIcon.classList.add('fa-chevron-right');
-            }
-            isQuoteDrawerOpen = true;
-        }
+            const renderQuote = (quoteData) => {
+                if (!printArea || !quoteData) return;
+                printArea.innerHTML = buildPrintableHtml(quoteData);
+            };
 
-        function closeQuoteDrawer() {
-            if (!quoteDrawerPanel) return;
-            quoteDrawerPanel.classList.add('translate-x-full');
-            quoteDrawerPanel.classList.remove('translate-x-0');
-            quoteDrawerPanel.setAttribute('aria-hidden', 'true');
-            if (quoteDrawerContainer) quoteDrawerContainer.classList.remove('drawer-open');
-            if (toggleQuoteDrawerBtn) {
-                toggleQuoteDrawerBtn.setAttribute('aria-expanded', 'false');
-                toggleQuoteDrawerBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-                toggleQuoteDrawerBtn.classList.remove('bg-indigo-700', 'hover:bg-indigo-800');
-            }
-            if (quoteDrawerToggleIcon) {
-                quoteDrawerToggleIcon.classList.add('fa-chevron-left');
-                quoteDrawerToggleIcon.classList.remove('fa-chevron-right');
-            }
-            isQuoteDrawerOpen = false;
-        }
-
-        updatePrintButtonState(false);
-
-        if (printQuoteBtn) {
-            printQuoteBtn.addEventListener('click', () => {
-                if (!lastPrintableQuoteData) {
-                    showTemporaryMessage('No hay ninguna cotización disponible para imprimir.', 'warning');
-                    return;
+            const open = () => {
+                if (!drawerPanel) return;
+                drawerPanel.classList.remove('translate-x-full');
+                drawerPanel.classList.add('translate-x-0');
+                drawerPanel.setAttribute('aria-hidden', 'false');
+                if (drawerContainer) drawerContainer.classList.add('drawer-open');
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('aria-expanded', 'true');
+                    toggleBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    toggleBtn.classList.add('bg-indigo-700', 'hover:bg-indigo-800');
                 }
-                const printContent = buildPrintableHtml(lastPrintableQuoteData);
-                document.getElementById('print-area').innerHTML = printContent;
-                openQuoteDrawer();
-                window.print();
-            });
-        }
+                if (toggleIcon) {
+                    toggleIcon.classList.remove('fa-chevron-left');
+                    toggleIcon.classList.add('fa-chevron-right');
+                }
+                state.isOpen = true;
+            };
 
-        function toggleQuoteDrawer() {
-            if (isQuoteDrawerOpen) {
-                closeQuoteDrawer();
-            } else {
-                openQuoteDrawer();
-            }
-        }
+            const close = () => {
+                if (!drawerPanel) return;
+                drawerPanel.classList.add('translate-x-full');
+                drawerPanel.classList.remove('translate-x-0');
+                drawerPanel.setAttribute('aria-hidden', 'true');
+                if (drawerContainer) drawerContainer.classList.remove('drawer-open');
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                    toggleBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                    toggleBtn.classList.remove('bg-indigo-700', 'hover:bg-indigo-800');
+                }
+                if (toggleIcon) {
+                    toggleIcon.classList.add('fa-chevron-left');
+                    toggleIcon.classList.remove('fa-chevron-right');
+                }
+                state.isOpen = false;
+            };
 
-        if (toggleQuoteDrawerBtn) {
-            toggleQuoteDrawerBtn.addEventListener('click', toggleQuoteDrawer);
-        }
+            const toggle = () => state.isOpen ? close() : open();
 
-        if (closeQuoteDrawerBtn) {
-            closeQuoteDrawerBtn.addEventListener('click', closeQuoteDrawer);
-        }
+            const setQuote = (quoteData, { autoOpen = true, render = true } = {}) => {
+                if (!quoteData) return;
+                state.lastQuote = cloneQuote(quoteData);
+                syncPrintButton();
+                if (render) renderQuote(state.lastQuote);
+                if (autoOpen) open();
+            };
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && isQuoteDrawerOpen) {
-                closeQuoteDrawer();
-            }
-        });
+            const attachEvents = () => {
+                if (toggleBtn) toggleBtn.addEventListener('click', toggle);
+                if (closeBtn) closeBtn.addEventListener('click', close);
+                if (printBtn) {
+                    printBtn.addEventListener('click', () => {
+                        if (!state.lastQuote) {
+                            showTemporaryMessage('No hay ninguna cotización disponible para imprimir.', 'warning');
+                            return;
+                        }
+                        renderQuote(state.lastQuote);
+                        open();
+                        window.print();
+                    });
+                }
+
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && state.isOpen) close();
+                });
+            };
+
+            const init = () => {
+                syncPrintButton();
+                attachEvents();
+            };
+
+            return { init, setQuote, open, close, toggle };
+        })();
+
+        quoteDrawer.init();
 
         // --- LÓGICA DE ACCESO ---
         const loginOverlay = document.getElementById('login-overlay');
@@ -2406,10 +2443,7 @@
             renderQuoteItems();
 
             // Imprimir
-            const printContent = buildPrintableHtml(quoteData);
-            document.getElementById('print-area').innerHTML = printContent;
-            setLastPrintableQuote(quoteData);
-            openQuoteDrawer();
+            quoteDrawer.setQuote(quoteData, { autoOpen: true, render: true });
 
             renderQuotesHistory(historyClientFilterId, currentHistoryFilter);
             renderDashboard();
@@ -2422,10 +2456,7 @@
                 showTemporaryMessage('Error: Cotización no encontrada.', 'error');
                 return;
             }
-            const printContent = buildPrintableHtml(quoteData);
-            document.getElementById('print-area').innerHTML = printContent;
-            setLastPrintableQuote(quoteData);
-            openQuoteDrawer();
+            quoteDrawer.setQuote(quoteData, { autoOpen: true });
             showTemporaryMessage(`Cotización ${quoteData.number} lista para imprimir desde el panel flotante.`, 'info');
         }
 
